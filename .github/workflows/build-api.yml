@@ -120,38 +120,28 @@ jobs:
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
-      # 8. Installer l'application "Packages" (macOS uniquement)
-      - name: Install Packages Application (macOS)
+      # 8. Construire l'installeur PKG avec l'outil natif pkgbuild (macOS uniquement)
+      - name: Build PKG Installer with pkgbuild (macOS)
         if: runner.os != 'Windows'
         run: |
-          curl -L -o Packages.dmg http://s.sudre.free.fr/Software/files/Packages.dmg
-          hdiutil attach Packages.dmg
-          VOLUME_PATH=$(ls -d /Volumes/Packages*)
-          echo "Volume Packages trouvé à l'emplacement : $VOLUME_PATH"
+          # Crée le dossier qui contiendra les fichiers à installer
+          mkdir -p build/pkg_root/PremiereGPTBeta
+          unzip frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
           
-          echo "--- Contenu du volume monté ---"
-          ls -lR "$VOLUME_PATH"
-          
-          # Se déplacer dans le volume pour éviter les problèmes de chemin avec des espaces
-          cd "$VOLUME_PATH"
-          # Utilise le nom de fichier correct "Install Packages.pkg"
-          sudo installer -pkg "Install Packages.pkg" -target /
-          # Revenir au répertoire précédent
-          cd -
-          hdiutil detach "$VOLUME_PATH"
+          # Crée un dossier pour les scripts et les copie dedans
+          mkdir -p build/scripts
+          cp preinstall.sh build/scripts/preinstall
+          cp postinstall.sh build/scripts/postinstall
 
-      # 9. Construire l'installeur PKG (macOS uniquement)
-      - name: Build PKG Installer (macOS)
-        if: runner.os != 'Windows'
-        run: |
-          mkdir -p build/pkg_payload
-          unzip frontend/PremiereGPTBeta.zxp -d build/pkg_payload
-          echo "--- Contenu du payload pour le PKG ---"
-          ls -R build/pkg_payload
-          echo "--- Lancement de packagesbuild ---"
-          packagesbuild PremiereCopilot_ARM.pkgproj --build-folder build
+          # Construit le PKG
+          pkgbuild --root build/pkg_root \
+                   --install-location "/Library/Application Support/Adobe/CEP/extensions" \
+                   --scripts build/scripts \
+                   --identifier com.trial17.premierecopilot \
+                   --version 1.0 \
+                   build/PremiereCopilot-Installer.pkg
 
-      # 10. Uploader l'artefact final
+      # 9. Uploader l'artefact final
       - name: Upload ZXP Artifact (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
@@ -164,4 +154,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}
-          path: build/PremiereCopilot_ARM.pkg
+          path: build/PremiereCopilot-Installer.pkg
