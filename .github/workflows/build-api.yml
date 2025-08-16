@@ -89,11 +89,11 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           echo "--- Contenu du dossier dist avant copie ---"
-          dir dist /s
+          Get-ChildItem -Path dist -Recurse
           mkdir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI
           copy dist\PremiereCopilot frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
           echo "--- Contenu du dossier de l'API après copie ---"
-          dir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI /s
+          Get-ChildItem -Path frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
         shell: pwsh
 
       # 7. Créer et signer le ZXP (macOS & Linux)
@@ -114,7 +114,7 @@ jobs:
         working-directory: ./frontend
         run: |
           echo "--- Vérification des fichiers avant signature ---"
-          dir
+          Get-ChildItem
           .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
