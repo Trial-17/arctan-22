@@ -128,7 +128,11 @@ jobs:
           hdiutil attach Packages.dmg
           VOLUME_PATH=$(ls -d /Volumes/Packages*)
           echo "Volume Packages trouvé à l'emplacement : $VOLUME_PATH"
-          sudo installer -pkg "$VOLUME_PATH/Packages.pkg" -target /
+          # Se déplacer dans le volume pour éviter les problèmes de chemin avec des espaces
+          cd "$VOLUME_PATH"
+          sudo installer -pkg "Packages.pkg" -target /
+          # Revenir au répertoire précédent
+          cd -
           hdiutil detach "$VOLUME_PATH"
 
       # 9. Construire l'installeur PKG (macOS uniquement)
