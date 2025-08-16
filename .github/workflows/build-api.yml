@@ -35,23 +35,45 @@ jobs:
         with:
           python-version: '3.12' # Assurez-vous que c'est la version que vous utilisez
 
-      # 3. Installe les dépendances Python
-      - name: Install Python dependencies
+      # 3. Crée l'environnement virtuel
+      - name: Create virtual environment
+        run: python -m venv venv
+
+      # 4. Installe les dépendances (macOS & Linux)
+      - name: Install dependencies (macOS & Linux)
+        if: runner.os != 'Windows'
         run: |
-          python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r backend/requirements.txt
         shell: bash
 
-      # 4. Construire l'API avec PyInstaller
-      - name: Build Backend API with PyInstaller
+      # 4b. Installe les dépendances (Windows)
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .\venv\Scripts\activate
+          pip install --upgrade pip
+          pip install -r backend\requirements.txt
+        shell: pwsh
+
+      # 5. Construire l'API avec PyInstaller (macOS & Linux)
+      - name: Build API with PyInstaller (macOS & Linux)
+        if: runner.os != 'Windows'
         run: |
           source venv/bin/activate
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
         shell: bash
 
-      # 5. Uploader l'exécutable comme un "artefact"
+      # 5b. Construire l'API avec PyInstaller (Windows)
+      - name: Build API with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .\venv\Scripts\activate
+          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\api.py
+        shell: pwsh
+
+      # 6. Uploader l'exécutable comme un "artefact"
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -63,4 +85,3 @@ jobs:
             dist/PremiereCopilot
             dist/PremiereCopilot.exe
           if-no-files-found: ignore # Ignore si le .exe n'est pas trouvé sur Mac et vice-versa
-
