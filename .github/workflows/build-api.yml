@@ -1,0 +1,66 @@
+# Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
+name: Build Backend API
+
+# Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
+on:
+  push:
+    branches: [ main ]
+  # Permet aussi de le lancer manuellement depuis l'interface de GitHub
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Stratégie de Matrice : exécute les mêmes étapes sur 3 machines virtuelles différentes
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            platform: Mac-ARM
+          - os: macos-13
+            platform: Mac-Intel
+          - os: windows-latest
+            platform: Windows
+
+    # Utilise la machine virtuelle définie dans la matrice
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # 1. Récupère le code de votre dépôt
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configure l'environnement Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' # Assurez-vous que c'est la version que vous utilisez
+
+      # 3. Installe les dépendances Python
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+        shell: bash
+
+      # 4. Construire l'API avec PyInstaller
+      - name: Build Backend API with PyInstaller
+        run: |
+          source venv/bin/activate
+          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
+        shell: bash
+
+      # 5. Uploader l'exécutable comme un "artefact"
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Le nom de l'artefact sera dynamique (ex: PremiereCopilot-Mac-ARM)
+          name: PremiereCopilot-${{ matrix.platform }}
+          # Chemin vers l'exécutable. PyInstaller le place dans le dossier 'dist'
+          # Sur Windows, l'exécutable a une extension .exe
+          path: |
+            dist/PremiereCopilot
+            dist/PremiereCopilot.exe
+          if-no-files-found: ignore # Ignore si le .exe n'est pas trouvé sur Mac et vice-versa
+
