@@ -128,6 +128,10 @@ jobs:
           hdiutil attach Packages.dmg
           VOLUME_PATH=$(ls -d /Volumes/Packages*)
           echo "Volume Packages trouvé à l'emplacement : $VOLUME_PATH"
+          
+          echo "--- Contenu du volume monté ---"
+          ls -lR "$VOLUME_PATH"
+          
           # Se déplacer dans le volume pour éviter les problèmes de chemin avec des espaces
           cd "$VOLUME_PATH"
           sudo installer -pkg "Packages.pkg" -target /
