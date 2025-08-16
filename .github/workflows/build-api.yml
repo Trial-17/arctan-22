@@ -97,6 +97,7 @@ jobs:
           chmod +x ./ZXPSignCmd
           ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+          ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
       # 7b. Créer et signer le ZXP (Windows)
       - name: Create and Sign ZXP (Windows)
@@ -105,11 +106,38 @@ jobs:
         run: |
           .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
+          .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
-      # 8. Uploader le ZXP final comme un "artefact"
-      - name: Upload ZXP Artifact
+      # 8. Installer l'application "Packages" (macOS uniquement)
+      - name: Install Packages Application (macOS)
+        if: runner.os != 'Windows'
+        run: |
+          curl -L -o Packages.pkg http://s.sudre.free.fr/Software/files/Packages.pkg
+          sudo installer -pkg Packages.pkg -target /
+
+      # 9. Construire l'installeur PKG (macOS uniquement)
+      - name: Build PKG Installer (macOS)
+        if: runner.os != 'Windows'
+        run: |
+          # Crée un dossier pour le contenu qui sera inclus dans le PKG
+          mkdir -p build/pkg_payload
+          # Décompresse le ZXP dans ce dossier
+          unzip frontend/PremiereGPTBeta.zxp -d build/pkg_payload
+          # Lance la construction du PKG
+          packagesbuild PremiereCopilot_ARM.pkgproj --build-folder build
+
+      # 10. Uploader l'artefact final
+      - name: Upload ZXP Artifact (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: PremiereGPTBeta-ZXP-${{ matrix.platform }}
           path: frontend/PremiereGPTBeta.zxp
+          
+      - name: Upload PKG Installer (macOS)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereCopilot-Installer-${{ matrix.platform }}
+          path: build/PremiereCopilot_ARM.pkg

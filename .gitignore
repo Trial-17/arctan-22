@@ -39,3 +39,8 @@ frontend/build.sh
 # frontend/PremiereGPTBeta.p12
 frontend/PremiereGPTBeta.zxp
 
+
+
+!postinstall.sh
+!preinstall.sh
+!PremiereCopilot_ARM.pkgproj
