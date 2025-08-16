@@ -77,16 +77,23 @@ jobs:
       - name: Prepare files for ZXP (macOS & Linux)
         if: runner.os != 'Windows'
         run: |
+          echo "--- Contenu du dossier dist avant copie ---"
+          ls -R dist
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
-          # Utilise cp -R pour copier le dossier de manière récursive
           cp -R dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+          echo "--- Contenu du dossier de l'API après copie ---"
+          ls -R frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
 
       # 6b. Préparer les fichiers pour le ZXP (Windows)
       - name: Prepare files for ZXP (Windows)
         if: runner.os == 'Windows'
         run: |
-          # PowerShell's copy is recursive by default for directories
+          echo "--- Contenu du dossier dist avant copie ---"
+          dir dist /s
+          mkdir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI
           copy dist\PremiereCopilot frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
+          echo "--- Contenu du dossier de l'API après copie ---"
+          dir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI /s
         shell: pwsh
 
       # 7. Créer et signer le ZXP (macOS & Linux)
@@ -94,6 +101,8 @@ jobs:
         if: runner.os != 'Windows'
         working-directory: ./frontend
         run: |
+          echo "--- Vérification des fichiers avant signature ---"
+          ls -l
           chmod +x ./ZXPSignCmd
           ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
@@ -104,6 +113,8 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: ./frontend
         run: |
+          echo "--- Vérification des fichiers avant signature ---"
+          dir
           .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
@@ -115,19 +126,20 @@ jobs:
         run: |
           curl -L -o Packages.dmg http://s.sudre.free.fr/Software/files/Packages.dmg
           hdiutil attach Packages.dmg
-          # Utilise le chemin exact connu du volume monté pour plus de fiabilité
-          sudo installer -pkg "/Volumes/Packages 1.2.10/Packages.pkg" -target /
-          hdiutil detach "/Volumes/Packages 1.2.10"
+          VOLUME_PATH=$(ls -d /Volumes/Packages*)
+          echo "Volume Packages trouvé à l'emplacement : $VOLUME_PATH"
+          sudo installer -pkg "$VOLUME_PATH/Packages.pkg" -target /
+          hdiutil detach "$VOLUME_PATH"
 
       # 9. Construire l'installeur PKG (macOS uniquement)
       - name: Build PKG Installer (macOS)
         if: runner.os != 'Windows'
         run: |
-          # Crée un dossier pour le contenu qui sera inclus dans le PKG
           mkdir -p build/pkg_payload
-          # Décompresse le ZXP dans ce dossier
           unzip frontend/PremiereGPTBeta.zxp -d build/pkg_payload
-          # Lance la construction du PKG
+          echo "--- Contenu du payload pour le PKG ---"
+          ls -R build/pkg_payload
+          echo "--- Lancement de packagesbuild ---"
           packagesbuild PremiereCopilot_ARM.pkgproj --build-folder build
 
       # 10. Uploader l'artefact final
