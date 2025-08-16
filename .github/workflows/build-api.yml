@@ -134,7 +134,8 @@ jobs:
           
           # Se déplacer dans le volume pour éviter les problèmes de chemin avec des espaces
           cd "$VOLUME_PATH"
-          sudo installer -pkg "Packages.pkg" -target /
+          # Utilise le nom de fichier correct "Install Packages.pkg"
+          sudo installer -pkg "Install Packages.pkg" -target /
           # Revenir au répertoire précédent
           cd -
           hdiutil detach "$VOLUME_PATH"
