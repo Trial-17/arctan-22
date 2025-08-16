@@ -115,8 +115,9 @@ jobs:
         run: |
           curl -L -o Packages.dmg http://s.sudre.free.fr/Software/files/Packages.dmg
           hdiutil attach Packages.dmg
-          sudo installer -pkg /Volumes/Packages/Packages.pkg -target /
-          hdiutil detach /Volumes/Packages
+          # Utilise un joker (*) pour trouver le bon chemin du volume
+          sudo installer -pkg "/Volumes/Packages"*/Packages.pkg -target /
+          hdiutil detach "/Volumes/Packages"*
 
       # 9. Construire l'installeur PKG (macOS uniquement)
       - name: Build PKG Installer (macOS)
