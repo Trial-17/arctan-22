@@ -1,0 +1,23 @@
+# 1. Ignorer tout par défaut
+*
+
+# 2. MAIS, ne pas ignorer le dossier "backend" lui-même
+!backend/
+!frontend/
+
+# 3. ENSUITE, ignorer tout ce qui se trouve DANS le dossier "backend"
+backend/*
+frontend/*
+
+# 4. ET ENFIN, faire des exceptions pour ce qu'on veut garder DANS "backend"
+!backend/api.py
+!backend/requirements.txt
+!backend/LIB/
+
+
+!frontend/PremiereGPTBeta/
+!frontend/ZXPSignCmd
+
+
+# 5. Ne pas oublier d'inclure le fichier .gitignore
+!.gitignore
