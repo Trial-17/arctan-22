@@ -78,14 +78,15 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
-          cp dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+          # Utilise cp -R pour copier le dossier de manière récursive
+          cp -R dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 
       # 6b. Préparer les fichiers pour le ZXP (Windows)
       - name: Prepare files for ZXP (Windows)
         if: runner.os == 'Windows'
         run: |
-          mkdir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI
-          copy dist\PremiereCopilot.exe frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI\
+          # PowerShell's copy is recursive by default for directories
+          copy dist\PremiereCopilot frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
         shell: pwsh
 
       # 7. Créer et signer le ZXP (macOS & Linux)

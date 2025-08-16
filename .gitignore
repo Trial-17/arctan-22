@@ -4,6 +4,10 @@
 # 2. Ne pas ignorer ce fichier .gitignore lui-même
 !.gitignore
 
+
+!.github/
+!.github/**
+
 # --- SECTION BACKEND ---
 # Autorise le dossier backend ET tout son contenu (récursivement)
 !backend/
@@ -32,6 +36,6 @@ backend/PremiereCopilot.spec
 frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 frontend/build.ps1
 frontend/build.sh
-frontend/PremiereGPTBeta.p12
+# frontend/PremiereGPTBeta.p12
 frontend/PremiereGPTBeta.zxp
 
