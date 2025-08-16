@@ -1,0 +1,700 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="css/style.min.css">
+    
+    <title>Premiere GPTBeta</title>
+    <script>
+        var isNS = (navigator.appName == "Netscape") ? 1 : 0;
+
+        if (navigator.appName == "Netscape") {
+            document.captureEvents(Event.MOUSEDOWN || Event.MOUSEUP);
+        }
+
+        function mischandler() {
+            return false;
+        }
+
+        function mousehandler(e) {
+            var myevent = (isNS) ? e : event;
+            var eventbutton = (isNS) ? myevent.which : myevent.button;
+            if ((eventbutton == 2) || (eventbutton == 3)) return false;
+        }
+
+        document.oncontextmenu = mischandler;
+        document.onmousedown = mousehandler;
+        document.onmouseup = mousehandler;
+
+        function getOS() {
+            var userAgent = window.navigator.userAgent,
+                platform = window.navigator.platform,
+                macosPlatforms = ['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'],
+                windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'],
+                os = null;
+
+            if (macosPlatforms.indexOf(platform) != -1) {
+                os = "MAC";
+            } else if (windowsPlatforms.indexOf(platform) != -1) {
+                os = "WIN";
+            }
+            return os;
+        }
+    </script>
+	<style>
+
+    </style>
+</head>
+<body>
+
+
+    <div id="panel">
+
+        <div id="blurOverlay"></div>
+        <!-- Interfaces -->
+		<div id="content">
+
+			<!-- Chat Interface -->
+            <div id="chatInterface">
+
+                <div id="messageContainer" data-messages-container="true"></div>
+                  <!-- Conteneur des messages -->
+                <div id="suggestionsWrapper">
+                    <div id="suggestionsContainer">
+                        <div class="suggestionBox">
+                            <h3 class="defaultText">Sequence</h3>
+                            <p class="defaultText">"Create a sequence for YouTube"</p>
+                            <p class="defaultText">"Create a new version V2"</p>
+
+                        </div>
+                        <div class="suggestionBox">
+                            <h3 class="defaultText">Edit</h3>
+                            <p class="defaultText">"Add zoom", "Add Morph Cut"</p>
+                            <p class="defaultText">"Switch this edit to vertical"</p>
+
+                        </div>
+                        <div class="suggestionBox">
+                            <h3 class="defaultText">Export</h3>
+                            <p class="defaultText">"Export my selected clips"</p>
+                            <p class="defaultText">"Export my sequence for YT, Insta"</p>
+
+                        </div>
+                        <div class="suggestionBox">
+                            <h3 class="defaultText">Research</h3>
+                            <p class="defaultText">"Find 3 moments for reels"</p>
+                            <p class="defaultText">"Find the moment where..."</p>
+
+                        </div>
+                    </div>
+                    <p id="back_text">Premiere GPT <span class="version-beta">Beta V1.5</span></p>
+                </div>
+
+                <!-- ✅ Interface Image Generation (cachée par défaut) -->
+                <div id="imageGenerationInterface">
+                    <div id="imageGenerationContainer">
+                        <div id="framesContainer">
+                            <!-- Colonne gauche - Frame de départ (2/3) -->
+                            <div class="frameBox">
+                                <div class="frameContent">
+                                    <div class="imageContainer"></div>
+                                    <span class="frameText">Start Frame</span>
+                                    <div class="iconsContainer">
+                                        <img src="assets/uploadImage.png" alt="Upload" class="frameIcon" data-frame="start">
+                                        <img src="assets/extract.png" alt="Extract" class="frameIcon">
+                                    </div>
+                                    <button class="deleteImageButton" style="display: none;">
+                                        <img src="assets/close.png" alt="Supprimer">
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Colonne droite - Contrôles (1/3) -->
+                            <div class="controlsColumn">
+                                <!-- Box unique pour tous les contrôles -->
+                                <div class="optionsBox">
+                                    <!-- Bouton Generate Video en haut -->
+                                    <button class="actionButton generateVideo">
+                                        <span class="buttonText">Generate Video</span>
+                                    </button>
+                                    
+                                    <!-- Bouton Generate Image -->
+                                    <button class="actionButton generateImage">
+                                        <span class="buttonText">Generate Image</span>
+                                    </button>
+                                    
+                                    <!-- Bouton Generative Fill -->
+                                    <button class="actionButton generativeFill">
+                                        <span class="buttonText">Generative Fill</span>
+                                    </button>
+                                    
+                                    <!-- Compteur de crédits -->
+                                    <div class="creditCounterContainer">
+                                        <div class="creditCounterIcon">
+                                            <img src="assets/credit.png" alt="Credits" />
+                                        </div>
+                                        <div class="creditCounterAmount">
+                                            <span id="imageGenerationCreditValue">1000</span> credits available
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Options de ratio et type -->
+                                    <div class="optionRowDouble">
+                                        <div class="optionCol optionColHorizontal">
+                                            <div class="panel-param-title"><img src="assets/aspectratio.png" class="panel-title-icon-img" alt="Aspect Ratio Icon">Aspect Ratio</div>
+                                            <select id="aspectRatioSelect" class="unified-select">
+                                                <option value="1280:720">1280:720</option>
+                                                <option value="720:1280">720:1280</option>
+                                                <option value="1104:832">1104:832</option>
+                                                <option value="832:1104">832:1104</option>
+                                                <option value="960:960">960:960</option>
+                                                <option value="1584:672">1584:672</option>
+                                            </select>
+                                        </div>
+                                        <div class="optionCol optionColHorizontal">
+                                            <div class="panel-param-title"><img src="assets/type.png" class="panel-title-icon-img" alt="Type Icon">Type</div>
+                                            <select id="typeSelect" class="unified-select">
+                                                <option value="rush">Rush</option>
+                                                <option value="effect">Effect</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section de conseils -->
+                        <div class="documentation-section">
+                            <h3 class="panel-param-title"><img src="assets/documentation.png" class="panel-title-icon-img" alt="Documentation Icon">Documentation</h3>
+                            <ul class="documentation-list">
+                                <li class="documentation-item">Use specific and detailed descriptions for better results (up to 1K Char) </li>
+                                <li class="documentation-item">Detail Camera Motion, Camera angle, action, consequence of the action, element to animate </li>
+                                <li class="documentation-item">Copilot will auto enhance your prompt</li>
+                                <li class="documentation-item">A good start frame is 95% of the job, so iterate it</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ Interface Podcast (cachée par défaut) -->
+                <div id="podcastInterface">
+                    <div id="podcastContainer">
+                        <div class="podcast_mainRow">
+                            <div class="podcast_boxWrapper">
+                                <div class="podcast_inputBox">
+                                    <div class="podcast_presetRow">
+                                        <select id="presetSelect" class="unified-select">
+                                            <option value="">Select Preset</option>
+                                        </select>
+                                        <button class="small-action-button save">Save</button>
+                                        <button class="small-action-button">Delete</button>
+                                    </div>
+                                    <div class="podcast_inputGroup">
+                                        <div class="podcast_paramRow">
+                                            <div class="panel-param-title"><img src="assets/speakernumber.png" class="panel-title-icon-img" alt="Speaker Number Icon">Speaker Number</div>
+                                            <select id="speakerCount" class="unified-select">
+                                                <option value="1">1</option>
+                                                <option value="2">2</option>
+                                                <option value="3">3</option>
+                                                <option value="4">4</option>
+                                                <option value="5">5</option>
+                                                <option value="6">6</option>
+                                                <option value="7">7</option>
+                                                <option value="8">8</option>
+                                                <option value="9">9</option>
+                                                <option value="10">10</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="podcast_inputGroup">
+                                        <div class="podcast_paramRow">
+                                            <div class="panel-param-title"><img src="assets/cameranumber.png" class="panel-title-icon-img" alt="Camera Number Icon">Camera Number</div>
+                                            <select id="cameraCount" class="unified-select">
+                                                <option value="1">1</option>
+                                                <option value="2">2</option>
+                                                <option value="3">3</option>
+                                                <option value="4">4</option>
+                                                <option value="5">5</option>
+                                                <option value="6">6</option>
+                                                <option value="7">7</option>
+                                                <option value="8">8</option>
+                                                <option value="9">9</option>
+                                                <option value="10">10</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="podcast_boxWrapper">
+                                <div class="podcast_inputBox">
+                                    <div class="podcast_inputGroup">
+                                        <div class="podcast_paramRow">
+                                            <div class="panel-param-title has-tooltip">MIN/MAX cut time
+                                                <span class="info-tooltip">
+                                                    <span class="tooltip-icon">i</span>
+                                                    Max & Min time a camera stays on screen. Empty for results similar to Autopod. Fill in to add dynamism or for a single audio track.
+                                                </span>
+                                            </div>
+                                            <div class="podcast_inputsRow">
+                                                <input type="number" id="minCutTime" class="podcast_input" min="0" step="1">
+                                                <span class="podcast_inputSeparator">/</span>
+                                                <input type="number" id="maxCutTime" class="podcast_input" min="0" step="1">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="podcast_inputGroup">
+                                        <div class="podcast_paramRow">
+                                            <div class="panel-param-title has-tooltip">Cutting Method
+                                                <span class="info-tooltip">
+                                                    <span class="tooltip-icon">i</span>
+                                                    <ul class="tooltip-list">
+                                                        <li>'Standard' deletes unused clips</li>
+                                                        <li>'Disable' disables unused clips instead of deleting them</li>
+                                                    </ul>
+                                                </span>
+                                            </div>
+                                            <select id="cuttingMethod" class="unified-select">
+                                                <option value="disable">Disable</option>
+                                                <option value="standard">Standard</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="podcast_inputGroup">
+                                        <button class="podcast_startEditing">
+                                            <span>Start Editing</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="advancedCutSettings" class="podcast_dynamicSection">
+                            <h3 class="panel-param-title">
+                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img" alt="Cut Settings Icon">
+                                <span>Advanced Cut Settings</span>
+                            </h3>
+                            <div class="podcast_advancedSettings">
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Delay Cuts
+                                        <span class="info-tooltip info-tooltip-right">
+                                            <span class="tooltip-icon">i</span>
+                                            Adds a small delay before a cut, which can create a more natural rhythm. The value is in seconds. We recommend a value between 0 and 0.5 seconds.
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="delayCutsSlider" min="0" max="2" step="0.05" value="0">
+                                        <div class="value-container">
+                                            <input type="number" id="delayCutsValue" class="podcast_sliderValue" min="0" max="2" step="0.05" value="0">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="delayCutsValue" data-step="0.05">▲</button>
+                                                <button class="stepper-button" data-for="delayCutsValue" data-step="-0.05">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Ignore Cut less than
+                                        <span class="info-tooltip">
+                                            <span class="tooltip-icon">i</span>
+                                            0 seconds ignores no cuts. We recommend 1 second for most edits.
+                                        </span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="ignoreCutSlider" min="0" max="7" step="0.25" value="1">
+                                        <div class="value-container">
+                                            <input type="number" id="ignoreCutValue" class="podcast_sliderValue" min="0" max="7" step="0.25" value="1">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="ignoreCutValue" data-step="0.25">▲</button>
+                                                <button class="stepper-button" data-for="ignoreCutValue" data-step="-0.25">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="speakersParameters" class="podcast_dynamicSection">
+                            <h3 class="panel-param-title">
+                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img" alt="Parameters Icon">
+                                <span>AudioTracks Parameters</span>
+                            </h3>
+                            <div class="speakersGrid">
+                                <!-- Les paramètres des speakers seront ajoutés ici dynamiquement -->
+                            </div>
+                        </div>
+
+                        <div id="camerasParameters" class="podcast_dynamicSection">
+                            <h3 class="panel-param-title">
+                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img" alt="Parameters Icon">
+                                <span>VideoTracks Parameters</span>
+                            </h3>
+                            <!-- Les paramètres des caméras seront ajoutés ici dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ Interface Auto Edit (cachée par défaut) -->
+                <div id="autoEditInterface">
+                    <div id="autoEditContainer">
+                        <div class="autoEdit_mainRow">
+                            <div class="autoEdit_boxWrapper">
+                                <div class="autoEdit_inputBox">
+                                    <div class="autoEdit_inputGroup">
+                                        <div class="autoEdit_paramRow">
+                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Input Folder</div>
+                                            <input type="text" id="folderName" placeholder="Entrez le nom du dossier">
+                                        </div>
+                                    </div>
+                                    <div class="suggestionsList" id="folderSuggestions"></div>
+                                    <div class="autoEdit_inputGroup">
+                                        <div class="autoEdit_paramRow">
+                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Chronologic</div>
+                                            <select class="unified-select">
+                                                <option value="no">no</option>
+                                                <option value="yes">yes</option>
+                                                <option value="mixed">mixed</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="autoEdit_inputGroup">
+                                        <div class="autoEdit_paramRow">
+                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Audio Type</div>
+                                            <select class="unified-select">
+                                                <option value="music">music</option>
+                                                <option value="speaker">speaker</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="autoEdit_inputGroup">
+                                        <div class="autoEdit_paramRow">
+                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Model Choice</div>
+                                            <select class="unified-select" id="modeleChoice">
+                                                <option value="FLASH">Flash</option>
+                                                <option value="PRO">Pro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="autoEdit_boxWrapper">
+                                <div class="autoEdit_inputBox">
+                                    <div class="autoEdit_inputGroup">
+                                        <button class="actionButton autoEdit" id="autoEdit">
+                                            <span class="buttonText">Auto Edit</span>
+                                        </button>
+                                    </div>
+                                    <div class="autoEdit_inputGroup">
+                                        <button class="actionButton audioAnalysis" id="audioAnalysis">
+                                            <span class="buttonText">Audio Analysis</span>
+                                        </button>
+                                    </div>
+                                    <div class="autoEdit_inputGroup">
+                                        <button class="actionButton fastEdit" id="fastEdit">
+                                            <span class="buttonText">Fast Edit</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="documentation-section">
+                            <h3 class="panel-param-title"><img src="assets/documentation.png" class="panel-title-icon-img" alt="Documentation Icon">Documentation</h3>
+                            <ul class="documentation-list">
+                                <li class="documentation-item">Auto Edit : based on your prompt, perform a V0 edit with audi track and Input folder</li>
+                                <li class="documentation-item">Audio Analysis : perform music beats analysis or will improve speach fluency</li>
+                                <li class="documentation-item">Speaker Mode : Improve the speach, start with audio video on track 0 at the origin</li>
+                                <li class="documentation-item">Audio Mode : beat detection, start with audio on track 0 at the origin</li>
+                                <li class="documentation-item">Fast Edit : synchronize selected clips on your timeline with beats markers on the audio clips</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ Interface Script (cachée par défaut) -->
+                <div id="scriptInterface">
+                    <div id="scriptContainer">
+                        <div class="scriptsGrid" id="scriptsGrid">
+                            <!-- Les scripts seront ajoutés ici dynamiquement par JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ Interface Tool (cachée par défaut) -->
+                <div id="toolInterface">
+                    <div id="toolContainer">
+                        <div class="podcast_dynamicSection" id="jumpCutBox">
+                            <div class="panel-param-title">
+                                <img src="assets/alignement.png" class="panel-title-icon-img no-filter" alt="Jump Cut Icon">
+                                <span>Jump Cut</span>
+                            </div>
+                            <div class="podcast_advancedSettings" id="jumpCutSliders1">
+                                <!-- Slider 1 -->
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Silence Cutoff
+                                        <span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>The audio level (in dB) below which sound is considered silence.</span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="silenceCutoffSlider" min="-100" max="-1" step="1" value="-50">
+                                        <div class="value-container">
+                                            <input type="number" id="silenceCutoffValue" class="podcast_sliderValue" min="-100" max="-1" step="1" value="-50">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="silenceCutoffValue" data-step="1">▲</button>
+                                                <button class="stepper-button" data-for="silenceCutoffValue" data-step="-1">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                
+                                <!-- Slider 2 -->
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Remove Silences Over
+                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Remove any silent segment longer than this duration (in seconds).</span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="removeSilencesSlider" min="0.1" max="2" step="0.1" value="0.2">
+                                        <div class="value-container">
+                                            <input type="number" id="removeSilencesValue" class="podcast_sliderValue" min="0.1" max="2" step="0.1" value="0.2">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="removeSilencesValue" data-step="0.1">▲</button>
+                                                <button class="stepper-button" data-for="removeSilencesValue" data-step="-0.1">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <div class="podcast_advancedSettings" id="jumpCutSliders2">
+                                <!-- Slider 3 -->
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Keep Segments Over
+                                         <span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Keep any non-silent segment longer than this duration (in seconds).</span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="keepSegmentsSlider" min="0.1" max="2" step="0.1" value="0.2">
+                                        <div class="value-container">
+                                            <input type="number" id="keepSegmentsValue" class="podcast_sliderValue" min="0.1" max="2" step="0.1" value="0.2">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="keepSegmentsValue" data-step="0.1">▲</button>
+                                                <button class="stepper-button" data-for="keepSegmentsValue" data-step="-0.1">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                
+                                <!-- Slider 4 -->
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Padding
+                                         <span class="info-tooltip"><span class="tooltip-icon">i</span>Add a small amount of padding (in seconds) to the start and end of each kept segment.</span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="paddingSlider" min="0.1" max="2" step="0.1" value="0.2">
+                                        <div class="value-container">
+                                            <input type="number" id="paddingValue" class="podcast_sliderValue" min="0.1" max="2" step="0.1" value="0.2">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="paddingValue" data-step="0.1">▲</button>
+                                                <button class="stepper-button" data-for="paddingValue" data-step="-0.1">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <div class="preview-area" id="jumpCutPreviewArea">
+                                <span class="preview-area-text">Press the Preview button</span>
+                            </div>
+                
+                            <div class="tool-button-row" id="jumpCutButtons">
+                                <button class="btn-main blue" id="jumpCutPreview">
+                                    <span>Preview</span>
+                                </button>
+                                <button class="btn-main green" id="createJumpCuts">
+                                    <span>Create Jump Cuts</span>
+                                </button>
+                                <button class="btn-secondary" id="deleteDisabledClips">
+                                    <span>Delete Disabled Clips</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TopIcons -->
+                <div id="topIcons" class="topIcons">
+                    <button class="topIcon" id="userButton">
+                        <img src="assets/user.png" alt="User" />
+                    </button>
+                    <button class="topIcon" id="plusButton">
+                        <img src="assets/plus.png" alt="Plus" />
+                    </button>
+                    <button class="topIcon" id="scriptButton">
+                        <img src="assets/script.png" alt="Script" />
+                        <span class="scriptIconText">Script</span>
+                    </button>
+                    <div id="scriptSearchContainer">
+                        <input type="text" id="scriptSearch" placeholder="Find a script..." />
+                        <button id="clearSearch">
+                            <img src="assets/close.png" alt="Clear" />
+                        </button>
+                    </div>
+                </div>
+                
+                 <!-- Chatbox toujours visible en bas -->
+                <div id="chatBox">
+                    <!-- Zone de saisie en haut -->
+                    <div id="inputContainer">
+                        <textarea id="messageInput" placeholder="Message to Copilot"></textarea>
+                    </div>
+
+                    <!-- Barre d'actions en bas -->
+                    <div id="chatActions">
+                        <!-- Icônes à gauche -->
+                        <div id="leftIcons">
+                            <button class="chatIcon" id="podcastButton">
+                                <img src="assets/podcast.png" />
+                                <span class="chatIconText">Podcast</span>
+                            </button>
+                            <button class="chatIcon" id="imageGenerationButton">
+                                <img src="assets/atom.png"  />
+                                <span class="chatIconText">Image Generation</span>
+                            </button>
+                            <button class="chatIcon" id="toolButton">
+                                <img src="assets/edit.png"  />
+                                <span class="chatIconText">Tools</span>
+                            </button>
+                            <button class="chatIcon" id="autoEditButton">
+                                <img src="assets/autoEdit.png"  />
+                                <span class="chatIconText">Auto Edit</span>
+                            </button>
+                        </div>
+
+                        <div id="statusMessage">Réflexion</div>
+
+                        <button id="sendButton" class="sendButton">
+                            <img src="assets/send.png" alt="Send" />
+                        </button>
+
+                        <!-- Animation de chargement (cachée par défaut) -->
+                        <div id="loadingIndicator">
+                            <img src="assets/animation.gif" alt="Loading..." />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+		</div>
+
+    </div>
+
+    <!-- Modale de mise à jour -->
+    <div id="updateModal" class="authModal">
+        <div class="authModalContent">
+            <div class="authHeader">
+                <h2>New Version Available!</h2>
+                <p>A new version of Premiere GPT is available. Here are the new features:</p>
+            </div>
+            <div class="update-content">
+                <ul id="updateFeaturesList">
+                    <!-- Les fonctionnalités seront ajoutées ici dynamiquement -->
+                </ul>
+            </div>
+            <div class="authForm">
+                <button id="updateNowButton" class="btn-main green">
+                    <span>Update Now</span>
+                </button>
+                <button id="updateLaterButton" class="btn-secondary">
+                    <span>Later</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modale d'authentification -->
+    <div id="authModal" class="authModal">
+        <div class="authModalContent">
+            <div class="authHeader">
+                <h2>Welcome Back ! </h2>
+                <p>Sign in to continue</p>
+            </div>
+            
+            <div class="authForm">
+                <div class="inputGroup">
+                    <label>Email</label>
+                    <input type="email" id="authEmail" placeholder="Enter your email">
+                </div>
+                
+                <div class="inputGroup">
+                    <label>Password</label>
+                    <input type="password" id="authPassword" placeholder="Enter your password">
+                </div>
+                
+                <button id="signInButton" class="authButton">
+                    <span>Sign In</span>
+                </button>
+                
+                <div id="statusMessage" class="statusMessage" style="display: none;"></div>
+                
+                <div class="authFooter">
+                    <p>Don't have an account? <a href="#" id="signUpLink">Sign up on premierecopilot.com</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale utilisateur -->
+    <div id="userModal" class="authModal">
+        <div class="authModalContent">
+            <div class="authHeader">
+                <h2 id="userModalName"></h2>
+                <p>Formula: <span id="membershipStatus" class="membershipBadge"></span></p>
+            </div>
+            
+            <div class="authForm">
+                <button id="documentationButton" class="authButton optionButton">
+                    <span>Documentation</span>
+                </button>
+                
+                <button id="featureRequestButton" class="authButton optionButton">
+                    <span>Request Features</span>
+                </button>
+                
+                <button id="logoutButton" class="authButton logoutButton">
+                    <span>Log Out</span>
+                </button>
+
+                <div class="authFooter">
+                    <p>Quick support : admin@premierecopilot.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de sauvegarde de message -->
+    <div class="messageSaveModal" id="messageSaveModal">
+        <div class="messageSaveModalContent">
+            <div class="messageContent" id="messageToSave"></div>
+            <div class="saveInputContainer">
+                <label for="saveName">Task Name</label>
+                <input type="text" id="saveName" class="saveNameInput" placeholder="Enter a name for this task">
+            </div>
+            <div class="saveModalActions">
+                <button class="cancelButton" id="cancelSaveButton">Cancel</button>
+                <button class="saveButton" id="confirmSaveButton">Save</button>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+<script src="./lib/CSInterface.js"></script>
+<script src="js/bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+
+</body>
+</html>

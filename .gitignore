@@ -1,23 +1,37 @@
-# 1. Ignorer tout par défaut
+# 1. Ignorer tous les fichiers et dossiers par défaut
 *
 
-# 2. MAIS, ne pas ignorer le dossier "backend" lui-même
-!backend/
-!frontend/
-
-# 3. ENSUITE, ignorer tout ce qui se trouve DANS le dossier "backend"
-backend/*
-frontend/*
-
-# 4. ET ENFIN, faire des exceptions pour ce qu'on veut garder DANS "backend"
-!backend/api.py
-!backend/requirements.txt
-!backend/LIB/
-
-
-!frontend/PremiereGPTBeta/
-!frontend/ZXPSignCmd
-
-
-# 5. Ne pas oublier d'inclure le fichier .gitignore
+# 2. Ne pas ignorer ce fichier .gitignore lui-même
 !.gitignore
+
+# --- SECTION BACKEND ---
+# Autorise le dossier backend ET tout son contenu (récursivement)
+!backend/
+!backend/**
+
+# --- SECTION FRONTEND ---
+# Autorise le dossier frontend ET tout son contenu (récursivement)
+!frontend/
+!frontend/**
+
+# --- EXCEPTIONS ---
+# Maintenant que tout est autorisé, on peut spécifiquement IGNORER ce qu'on ne veut pas.
+
+
+backend/__pycache__
+backend/build
+backend/build_env
+backend/dist
+backend/patch
+backend/build.ps1
+backend/build.py
+backend/build.sh
+backend/PremiereCopilot.spec
+
+
+frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+frontend/build.ps1
+frontend/build.sh
+frontend/PremiereGPTBeta.p12
+frontend/PremiereGPTBeta.zxp
+

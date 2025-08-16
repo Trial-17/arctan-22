@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PremiereData Version="3">
+	<PresetName>($$$/AME/EncoderHost/Presets/bb651f24-b055-4e17-a4ab-4bc2af3bc851/PresetName=YouTube 2160p 4K Ultra HD)</PresetName>
+	<PresetComments>($$$/AME/EncoderHost/Presets/bb651f24-b055-4e17-a4ab-4bc2af3bc851/PresetComments=High Quality 2160p 4K Ultra HD for publishing to YouTube - Resolution and Frame Rate matched to source)</PresetComments>
+	<PresetUserComments></PresetUserComments>
+	<PresetCreatorApp>Adobe Media Encoder</PresetCreatorApp>
+	<ExporterName></ExporterName>
+	<ExporterClassID>1313424203</ExporterClassID>
+	<ExporterFileType>1211250228</ExporterFileType>
+	<ExportParamContainer ObjectRef="1"/>
+	<PresetID>273efb15-b34c-41ce-ac14-1ba3dbfc9570</PresetID>
+	<DoAudio>true</DoAudio>
+	<DoVideo>true</DoVideo>
+	<FolderDisplayPath></FolderDisplayPath>
+	<StandardFilters Version="1">
+		<CropType>0</CropType>
+		<UseFrameBlending>false</UseFrameBlending>
+		<CustomStartTime>-101606400000000000</CustomStartTime>
+		<TimeInterpolationType>0</TimeInterpolationType>
+	</StandardFilters>
+	<ExportXMPOptionKey>10</ExportXMPOptionKey>
+	<IngestCopyVerificationType>-1</IngestCopyVerificationType>
+	<DoEffects>true</DoEffects>
+	<DoCaptions>true</DoCaptions>
+	<DoMetadata>true</DoMetadata>
+	<ExporterParamContainer ObjectID="1" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="2"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="2" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>10</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>0</ParamIdentifier>
+		<ParamName></ParamName>
+		<ExporterChildParams ObjectRef="3"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="3" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="4"/>
+			<ParamContainerItem Index="1" ObjectRef="40"/>
+			<ParamContainerItem Index="2" ObjectRef="70"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="4" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioTabGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="5"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="5" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="6"/>
+			<ParamContainerItem Index="1" ObjectRef="9"/>
+			<ParamContainerItem Index="2" ObjectRef="10"/>
+			<ParamContainerItem Index="3" ObjectRef="21"/>
+			<ParamContainerItem Index="4" ObjectRef="24"/>
+			<ParamContainerItem Index="5" ObjectRef="34"/>
+			<ParamContainerItem Index="6" ObjectRef="37"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="6" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEMPEGAudioFormatGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="7"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="7" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="8"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="8" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1094796064</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEMPEGAudioFormat</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="9" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioCodecGroup</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="10" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIdentifier>ADBEBasicAudioGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="11"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="11" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="12"/>
+			<ParamContainerItem Index="1" ObjectRef="13"/>
+			<ParamContainerItem Index="2" ObjectRef="14"/>
+			<ParamContainerItem Index="3" ObjectRef="15"/>
+			<ParamContainerItem Index="4" ObjectRef="16"/>
+			<ParamContainerItem Index="5" ObjectRef="17"/>
+			<ParamContainerItem Index="6" ObjectRef="18"/>
+			<ParamContainerItem Index="7" ObjectRef="19"/>
+			<ParamContainerItem Index="8" ObjectRef="20"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="12" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1094796064</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioCodec</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="13" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>48000</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioRatePerSecond</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="14" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>2</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioNumChannels</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="15" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>3</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIdentifier>ADBEAACParametricStereo</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="16" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>4</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEAudioSampleType</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="17" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>2</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>5</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAACAudioQuality</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="18" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>7</ParamType>
+		<ParamOrdinalValue>6</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEAudioCodecPrefsButton</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="19" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>7</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioLayer</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="20" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>8</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioMode</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="21" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>3</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioBitrateGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="22"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="22" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="23"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="23" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>320</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioBitrate</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="24" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>4</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioAdvancedSettingsGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="25"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="25" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="26"/>
+			<ParamContainerItem Index="1" ObjectRef="27"/>
+			<ParamContainerItem Index="2" ObjectRef="28"/>
+			<ParamContainerItem Index="3" ObjectRef="29"/>
+			<ParamContainerItem Index="4" ObjectRef="30"/>
+			<ParamContainerItem Index="5" ObjectRef="31"/>
+			<ParamContainerItem Index="6" ObjectRef="32"/>
+			<ParamContainerItem Index="7" ObjectRef="33"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="26" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAACAudioPrecedence</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="27" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEAACAudioOversampled</ParamIdentifier>
+		<ParamAuxValue>AAC</ParamAuxValue>
+	</ExporterParam>
+	<ExporterParam ObjectID="28" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioPsychModel</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="29" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>3</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioDeemphasis</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="30" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>4</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioEnableCRC</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="31" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>5</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioEnablePrivateBit</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="32" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>6</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioEnableCopyrightBit</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="33" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>7</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEMPEGAudioEnableOriginalBit</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="34" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>5</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioChannelConfigurationGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="35"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="35" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="36"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="36" ClassID="b93e10ab-6079-493d-a2b4-c7feb4a510b0" Version="1">
+		<ParamType>9</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEAudioChannelConfiguration</ParamIdentifier>
+		<ParamArbData Encoding="base64" Checksum="1660657610">eyJtQWxsb3dlZENoYW5uZWxMYXlvdXRWZWN0b3IiOltdLCJtQ2hhbm5lbExheW91dFZlY3RvciI6W1t7ImNoYW5uZWxsYWJlbCI6MTAwfSx7ImNoYW5uZWxsYWJlbCI6MTAxfV1dLCJtTWF4TnVtQXVkaW9DaGFubmVscyI6MzIsIm1NYXhOdW1BdWRpb0NoYW5uZWxzUGVyU3RyZWFtIjozMiwibU1heE51bUF1ZGlvU3RyZWFtcyI6MzIsIm1WZXJzaW9uIjoxfQ==</ParamArbData>
+	</ExporterParam>
+	<ExporterParam ObjectID="37" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>6</ParamOrdinalValue>
+		<ParamIdentifier>ADBEAudioAmbiGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="38"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="38" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="39"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="39" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEAudioAmbiDoExport</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="40" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoTabGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="41"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="41" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="42"/>
+			<ParamContainerItem Index="1" ObjectRef="45"/>
+			<ParamContainerItem Index="2" ObjectRef="60"/>
+			<ParamContainerItem Index="3" ObjectRef="67"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="42" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEVideoCodecGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="43"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="43" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="44"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="44" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoCodec</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="45" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIdentifier>ADBEBasicVideoGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="46"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="46" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="47"/>
+			<ParamContainerItem Index="1" ObjectRef="48"/>
+			<ParamContainerItem Index="2" ObjectRef="49"/>
+			<ParamContainerItem Index="3" ObjectRef="50"/>
+			<ParamContainerItem Index="4" ObjectRef="51"/>
+			<ParamContainerItem Index="5" ObjectRef="52"/>
+			<ParamContainerItem Index="6" ObjectRef="53"/>
+			<ParamContainerItem Index="7" ObjectRef="54"/>
+			<ParamContainerItem Index="8" ObjectRef="55"/>
+			<ParamContainerItem Index="9" ObjectRef="56"/>
+			<ParamContainerItem Index="10" ObjectRef="57"/>
+			<ParamContainerItem Index="11" ObjectRef="58"/>
+			<ParamContainerItem Index="12" ObjectRef="59"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="47" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>7</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoMatchSource</ParamIdentifier>
+		<ParamArbData Encoding="base64" Checksum="3096284557">BgAAAA==</ParamArbData>
+	</ExporterParam>
+	<ExporterParam ObjectID="48" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>100</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIsSlider>true</ParamIsSlider>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEVideoQuality</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="49" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>3840</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoWidth</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="50" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>2160</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>3</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoHeight</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="51" ClassID="8def7863-204e-4206-8791-54a78f15c66b" Version="1">
+		<ParamValue>8467200000</ParamValue>
+		<ParamType>4</ParamType>
+		<ParamOrdinalValue>4</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIdentifier>ADBEVideoFPS</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="52" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>5</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIdentifier>ADBEVideoFieldType</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="53" ClassID="8d9836e8-d00a-4a00-bfc0-dfbb73540736" Version="1">
+		<ParamValue>1,1</ParamValue>
+		<ParamType>11</ParamType>
+		<ParamOrdinalValue>6</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoAspect</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="54" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>7</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIdentifier>ADBEMPEGTVStandard</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="55" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>3</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>8</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoMPEGProfile</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="56" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>52</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>9</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoMPEGProfileLevel</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="57" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>10</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIdentifier>ADBE_H264_ColorPrimaries</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="58" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>11</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
+		<ParamIdentifier>ADBE_H264_HDR</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="59" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
+		<ParamType>1</ParamType>
+		<ParamOrdinalValue>12</ParamOrdinalValue>
+		<ParamIdentifier>ADBERenderDeepColor</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="60" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoBitrateGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="61"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="61" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="62"/>
+			<ParamContainerItem Index="1" ObjectRef="63"/>
+			<ParamContainerItem Index="2" ObjectRef="64"/>
+			<ParamContainerItem Index="3" ObjectRef="65"/>
+			<ParamContainerItem Index="4" ObjectRef="66"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="62" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>2</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoBitrateEncoding</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="63" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEVideoBitrateLevel</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="64" ClassID="018cf63d-c58d-4d39-97df-36b6b2d6ef88" Version="1">
+		<ParamValue>2.</ParamValue>
+		<ParamType>3</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIsSlider>true</ParamIsSlider>
+		<ParamIsHidden>true</ParamIsHidden>
+		<ParamIdentifier>ADBEVideoMinBitrate</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="65" ClassID="018cf63d-c58d-4d39-97df-36b6b2d6ef88" Version="1">
+		<ParamValue>40.</ParamValue>
+		<ParamType>3</ParamType>
+		<ParamOrdinalValue>3</ParamOrdinalValue>
+		<ParamIsSlider>true</ParamIsSlider>
+		<ParamIdentifier>ADBEVideoTargetBitrate</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="66" ClassID="018cf63d-c58d-4d39-97df-36b6b2d6ef88" Version="1">
+		<ParamValue>40.</ParamValue>
+		<ParamType>3</ParamType>
+		<ParamOrdinalValue>4</ParamOrdinalValue>
+		<ParamIsSlider>true</ParamIsSlider>
+		<ParamIdentifier>ADBEVideoMaxBitrate</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="67" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>3</ParamOrdinalValue>
+		<ParamIdentifier>ADBEVideoAdvancedSettingsGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="68"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="68" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="69"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="69" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>90</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<IsOptionalParam>true</IsOptionalParam>
+		<ParamIdentifier>ADBEMPEGKeyframeRate</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="70" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>2</ParamOrdinalValue>
+		<ParamIdentifier>ADBEMPEGMuxTabGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="71"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="71" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="72"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="72" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamType>8</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEMPEGMuxBasicSettingsGroup</ParamIdentifier>
+		<ExporterChildParams ObjectRef="73"/>
+	</ExporterParam>
+	<ExporterParamContainer ObjectID="73" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">
+		<ParamContainerItems Version="1">
+			<ParamContainerItem Index="0" ObjectRef="74"/>
+			<ParamContainerItem Index="1" ObjectRef="75"/>
+		</ParamContainerItems>
+		<ContainedParamsVersion>1</ContainedParamsVersion>
+	</ExporterParamContainer>
+	<ExporterParam ObjectID="74" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1297101856</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>0</ParamOrdinalValue>
+		<ParamIdentifier>ADBEMPEGMultiplexer</ParamIdentifier>
+	</ExporterParam>
+	<ExporterParam ObjectID="75" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1398031392</ParamValue>
+		<ParamType>2</ParamType>
+		<ParamOrdinalValue>1</ParamOrdinalValue>
+		<ParamIdentifier>ADBEMPEGMuxStreamCompatibility</ParamIdentifier>
+	</ExporterParam>
+</PremiereData>
