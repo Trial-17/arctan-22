@@ -166,51 +166,64 @@ def execute_script(request: ExecuteScriptRequest):
 
 
 
-# --- Ajout pour la communication avec les outils JS
+# --- PARTIE COPILOT
 
-import asyncio
-from starlette.responses import StreamingResponse
-from LIB.shared_state import JS_TOOL_CALLS
+# import asyncio
+# from starlette.responses import StreamingResponse
+# from LIB.shared_state import JS_TOOL_CALLS
+# from LIB.fast_label import main_fast_labelize
+# from LIB.agent import run_agent_streaming
 
-from LIB.fast_label import main_fast_labelize
+# class JsResult(BaseModel):
+#     call_id: str
+#     result: Any
 
-from LIB.agent import run_agent_streaming
-
-class JsResult(BaseModel):
-    call_id: str
-    result: Any
-
-@app.post("/js-result")
-def post_js_result(data: JsResult):
-    """
-    Endpoint pour que le client JS envoie le résultat d'une exécution de fonction.
-    """
-    print(data)
-    call_info = JS_TOOL_CALLS.get(data.call_id)
-    if call_info and 'event' in call_info:
-        call_info['result'] = data.result
-        call_info['event'].set()
-        return {"status": "ok"}
-    return {"status": "error", "message": "call_id not found"}
+# @app.post("/js-result")
+# def post_js_result(data: JsResult):
+#     """
+#     Endpoint pour que le client JS envoie le résultat d'une exécution de fonction.
+#     """
+#     print(data)
+#     call_info = JS_TOOL_CALLS.get(data.call_id)
+#     if call_info and 'event' in call_info:
+#         call_info['result'] = data.result
+#         call_info['event'].set()
+#         return {"status": "ok"}
+#     return {"status": "error", "message": "call_id not found"}
 
 
-# ------- Agent
-class StreamChatRequest(BaseModel):
-    prompt: str
-    google_api_key: str
+# # ------- Agent
+# class StreamChatRequest(BaseModel):
+#     prompt: str
+#     google_api_key: str
 
-@app.post("/stream-chat")
-async def stream_chat(request: StreamChatRequest):
-    """
-    Endpoint de chat qui retourne une réponse en streaming de l'agent.
-    """
-    print(f"--- Requête reçue sur /stream-chat avec le prompt: '{request.prompt}' ---")
-    async def event_generator():
-        # L'agent va maintenant yield des dictionnaires qu'on transforme en JSON
-        async for item in run_agent_streaming(request.prompt, request.google_api_key):
-            yield json.dumps(item, ensure_ascii=False) + "\n"
+# @app.post("/stream-chat")
+# async def stream_chat(request: StreamChatRequest):
+#     """
+#     Endpoint de chat qui retourne une réponse en streaming de l'agent.
+#     """
+#     print(f"--- Requête reçue sur /stream-chat avec le prompt: '{request.prompt}' ---")
+#     async def event_generator():
+#         # L'agent va maintenant yield des dictionnaires qu'on transforme en JSON
+#         async for item in run_agent_streaming(request.prompt, request.google_api_key):
+#             yield json.dumps(item, ensure_ascii=False) + "\n"
 
-    return StreamingResponse(event_generator(), media_type="text/plain")
+#     return StreamingResponse(event_generator(), media_type="text/plain")
+
+
+# class FastLabelizeRequest(BaseModel):
+#     video_path: str
+#     token: str
+
+# @app.post("/fast-labelize")
+# def fast_labelize(request: FastLabelizeRequest):
+#     """
+#     Lance une analyse rapide pour un seul fichier vidéo.
+#     """
+#     config.API_STATUS = "Fast Labelization"
+#     result = main_fast_labelize(request.video_path, request.token)
+#     config.API_STATUS = "End"
+#     return result
 
 
 # ------- Podcast
@@ -237,6 +250,7 @@ def get_podcast_results():
     return config.RESULTS 
   
   
+
 # ------- Labelisation 
 # class LabelizeRequest(BaseModel):
 #     paths: List[str]
@@ -253,21 +267,6 @@ def get_podcast_results():
 #     config.API_STATUS = "End"
     
 #     return {str(result)}
-
-class FastLabelizeRequest(BaseModel):
-    video_path: str
-    token: str
-
-@app.post("/fast-labelize")
-def fast_labelize(request: FastLabelizeRequest):
-    """
-    Lance une analyse rapide pour un seul fichier vidéo.
-    """
-    config.API_STATUS = "Fast Labelization"
-    result = main_fast_labelize(request.video_path, request.token)
-    config.API_STATUS = "End"
-    return result
-
 
 # ------- Deep Research
 # class SearchQuery(BaseModel):
