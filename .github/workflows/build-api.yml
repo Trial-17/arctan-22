@@ -1,5 +1,5 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build Backend API
+name: Build Backend API and ZXP Plugin
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
@@ -73,15 +73,42 @@ jobs:
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\api.py
         shell: pwsh
 
-      # 6. Uploader l'exécutable comme un "artefact"
-      - name: Upload Artifact
+      # 6. Préparer les fichiers pour le ZXP (macOS & Linux)
+      - name: Prepare files for ZXP (macOS & Linux)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
+          cp dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+
+      # 6b. Préparer les fichiers pour le ZXP (Windows)
+      - name: Prepare files for ZXP (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI
+          copy dist\PremiereCopilot.exe frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI\
+        shell: pwsh
+
+      # 7. Créer et signer le ZXP (macOS & Linux)
+      - name: Create and Sign ZXP (macOS & Linux)
+        if: runner.os != 'Windows'
+        working-directory: ./frontend
+        run: |
+          chmod +x ./ZXPSignCmd
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+
+      # 7b. Créer et signer le ZXP (Windows)
+      - name: Create and Sign ZXP (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ./frontend
+        run: |
+          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
+        shell: pwsh
+
+      # 8. Uploader le ZXP final comme un "artefact"
+      - name: Upload ZXP Artifact
         uses: actions/upload-artifact@v4
         with:
-          # Le nom de l'artefact sera dynamique (ex: PremiereCopilot-Mac-ARM)
-          name: PremiereCopilot-${{ matrix.platform }}
-          # Chemin vers l'exécutable. PyInstaller le place dans le dossier 'dist'
-          # Sur Windows, l'exécutable a une extension .exe
-          path: |
-            dist/PremiereCopilot
-            dist/PremiereCopilot.exe
-          if-no-files-found: ignore # Ignore si le .exe n'est pas trouvé sur Mac et vice-versa
+          name: PremiereGPTBeta-ZXP-${{ matrix.platform }}
+          path: frontend/PremiereGPTBeta.zxp
