@@ -133,7 +133,7 @@ jobs:
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
 
-      # 10. Uploader l'artefact finale
+      # 10. Uploader l'artefact final
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
