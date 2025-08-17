@@ -92,12 +92,8 @@ jobs:
         run: |
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Application signing identity: $SIGNING_IDENTITY"
-          # Signe d'abord toutes les librairies internes (inside-out)
-          find dist/PremiereCopilot -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime {} \;
-          # Signe le framework Python
-          codesign --force --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot/_internal/Python.framework
-          # Signe l'exécutable principal en dernier
-          codesign --force --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot
+          # Utilise --deep pour signer récursivement tous les composants, y compris le framework Python, en une seule commande robuste.
+          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --entitlements entitlements.plist dist/PremiereCopilot
 
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
