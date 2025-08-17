@@ -50,15 +50,15 @@ jobs:
           security find-identity -v -p codesigning build.keychain
           echo "------------------------------------"
           
-          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1)
+          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
           if [ -z "$APP_IDENTITY" ]; then
-            echo "::error::Developer ID Application certificate not found."
+            echo "::error::Developer ID Application certificate not found. Please check your APPLE_DEVELOPER_CERTIFICATE_P12 secret."
             exit 1
           fi
           
-          INSTALLER_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer" | head -n 1)
+          INSTALLER_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer")
           if [ -z "$INSTALLER_IDENTITY" ]; then
-            echo "::error::Developer ID Installer certificate not found."
+            echo "::error::Developer ID Installer certificate not found. Please check your APPLE_INSTALLER_CERTIFICATE_P12 secret."
             exit 1
           fi
           
