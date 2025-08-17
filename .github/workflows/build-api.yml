@@ -27,13 +27,50 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configure l'environnement Python
+      # 2. Importer le certificat combiné et vérifier les identités
+      - name: Import and Verify Combined Apple Certificate
+        env:
+          MACOS_CERTS_P12: ${{ secrets.MACOS_CERTS_P12 }}
+          MACOS_CERTS_PASSWORD: ${{ secrets.MACOS_CERTS_PASSWORD }}
+        run: |
+          # Vérification du secret
+          if [ -z "$MACOS_CERTS_P12" ]; then echo "::error::Secret MACOS_CERTS_P12 is empty or not set."; exit 1; fi
+
+          # Importation du certificat combiné
+          echo "$MACOS_CERTS_P12" | base64 --decode > combined.p12
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          # On autorise l'accès à tous les outils de signature nécessaires
+          security import combined.p12 -k build.keychain -P "$MACOS_CERTS_PASSWORD" -A -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/pkgbuild
+          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+
+          # Vérification que les deux identités sont bien présentes
+          echo "--- Available Signing Identities ---"
+          security find-identity -v -p codesigning build.keychain
+          echo "------------------------------------"
+          
+          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
+          if [ -z "$APP_IDENTITY" ]; then
+            echo "::error::Developer ID Application certificate not found in combined P12."
+            exit 1
+          fi
+          
+          INSTALLER_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer")
+          if [ -z "$INSTALLER_IDENTITY" ]; then
+            echo "::error::Developer ID Installer certificate not found in combined P12."
+            exit 1
+          fi
+          
+          echo "✅ Both Application and Installer certificates found in the keychain."
+
+      # 3. Configure l'environnement Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # 3. Crée l'environnement virtuel et installe les dépendances
+      # 4. Crée l'environnement virtuel et installe les dépendances
       - name: Install Python dependencies
         run: |
           python -m venv venv
@@ -42,29 +79,12 @@ jobs:
           pip install -r backend/requirements.txt
         shell: bash
 
-      # 4. Construire l'API avec PyInstaller
+      # 5. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
           source venv/bin/activate
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
         shell: bash
-
-      # 5. Importer les certificats Apple
-      - name: Import Apple Certificates
-        env:
-          APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
-          APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
-          INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
-          INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
-        run: |
-          security create-keychain -p temp build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p temp build.keychain
-          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
-          security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
-          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
-          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
-          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
       # 6. Signer l'exécutable de l'API et ses composants
       - name: Sign the API Executable
@@ -85,7 +105,7 @@ jobs:
         working-directory: ./frontend
         run: |
           chmod +x ./ZXPSignCmd
-          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3G50
           ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
@@ -99,7 +119,18 @@ jobs:
           cp preinstall.sh build/scripts/preinstall
           cp postinstall.sh build/scripts/postinstall
           
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          echo "--- Available identities in build.keychain ---"
+          security find-identity -v build.keychain
+          echo "---------------------------------------------"
+
+          # Correction : On cherche dans toutes les identités (-v) et non plus seulement celles pour la signature de code (-p codesigning)
+          SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          
+          if [ -z "$SIGNING_IDENTITY" ]; then
+            echo "::error::Developer ID Installer identity not found."
+            exit 1
+          fi
+
           echo "Using Installer signing identity: $SIGNING_IDENTITY"
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Adobe/CEP/extensions" \
