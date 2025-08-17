@@ -1,5 +1,5 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build Backend API and ZXP Plugin
+name: Build macOS Installers
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    # Stratégie de Matrice : exécute les mêmes étapes sur 3 machines virtuelles différentes
+  build-macos:
+    # Stratégie de Matrice : exécute les mêmes étapes sur les deux architectures Mac
     strategy:
       matrix:
         include:
@@ -18,8 +18,6 @@ jobs:
             platform: Mac-ARM
           - os: macos-13
             platform: Mac-Intel
-          # - os: windows-latest
-          #   platform: Windows
 
     # Utilise la machine virtuelle définie dans la matrice
     runs-on: ${{ matrix.os }}
@@ -33,102 +31,57 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' # Assurez-vous que c'est la version que vous utilisez
+          python-version: '3.12'
 
-      # 3. Crée l'environnement virtuel
-      - name: Create virtual environment
-        run: python -m venv venv
-
-      # 4. Installe les dépendances (macOS & Linux)
-      - name: Install dependencies (macOS & Linux)
-        if: runner.os != 'Windows'
+      # 3. Crée l'environnement virtuel et installe les dépendances
+      - name: Install Python dependencies
         run: |
+          python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r backend/requirements.txt
         shell: bash
 
-      # 4b. Installe les dépendances (Windows)
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          .\venv\Scripts\activate
-          pip install --upgrade pip
-          pip install -r backend\requirements.txt
-        shell: pwsh
-
-      # 5. Construire l'API avec PyInstaller (macOS & Linux)
-      - name: Build API with PyInstaller (macOS & Linux)
-        if: runner.os != 'Windows'
+      # 4. Construire l'API avec PyInstaller
+      - name: Build API with PyInstaller
         run: |
           source venv/bin/activate
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
         shell: bash
 
-      # 5b. Construire l'API avec PyInstaller (Windows)
-      - name: Build API with PyInstaller (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          .\venv\Scripts\activate
-          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\api.py
-        shell: pwsh
-
-      # 6. Importer les certificats Apple (macOS uniquement)
-      - name: Import Apple Certificates (macOS)
-        if: runner.os != 'Windows'
+      # 5. Importer les certificats Apple
+      - name: Import Apple Certificates
         env:
           APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
           APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
           INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
           INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
         run: |
-          # Crée un trousseau temporaire
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
-          
-          # Importe le certificat Application
           echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
           security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
-          
-          # Importe le certificat Installer
           echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
           security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
-          
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
-      # 7. Signer l'exécutable de l'API et ses composants (macOS)
-      - name: Sign the API Executable (macOS)
-        if: runner.os != 'Windows'
+      # 6. Signer l'exécutable de l'API et ses composants
+      - name: Sign the API Executable
         run: |
-          # Trouve l'identité de signature "Application"
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Application signing identity: $SIGNING_IDENTITY"
-          
-          # Signe tous les fichiers binaires et librairies internes
           find dist/PremiereCopilot -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime {} \;
-          
-          # Signe l'exécutable principal en dernier
           codesign --force --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot
 
-      # 8. Préparer les fichiers pour le ZXP (macOS & Linux)
-      - name: Prepare files for ZXP (macOS & Linux)
-        if: runner.os != 'Windows'
+      # 7. Préparer les fichiers pour le ZXP
+      - name: Prepare files for ZXP
         run: |
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
           cp -R dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 
-      # 8b. Préparer les fichiers pour le ZXP (Windows)
-      - name: Prepare files for ZXP (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          mkdir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI
-          copy dist\PremiereCopilot frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
-        shell: pwsh
-
-      # 9. Créer et signer le ZXP (macOS & Linux)
-      - name: Create and Sign ZXP (macOS & Linux)
-        if: runner.os != 'Windows'
+      # 8. Créer et signer le ZXP
+      - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
           chmod +x ./ZXPSignCmd
@@ -136,32 +89,17 @@ jobs:
           ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
-      # 9b. Créer et signer le ZXP (Windows)
-      - name: Create and Sign ZXP (Windows)
-        if: runner.os == 'Windows'
-        working-directory: ./frontend
-        run: |
-          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
-          .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
-          .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
-        shell: pwsh
-
-      # 10. Construire et signer l'installeur PKG (macOS uniquement)
-      - name: Build and Sign PKG Installer (macOS)
-        if: runner.os != 'Windows'
+      # 9. Construire et signer l'installeur PKG
+      - name: Build and Sign PKG Installer
         run: |
           mkdir -p build/pkg_root/PremiereGPTBeta
           unzip frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
-          
           mkdir -p build/scripts
           chmod +x preinstall.sh postinstall.sh
           cp preinstall.sh build/scripts/preinstall
           cp postinstall.sh build/scripts/postinstall
-
-          # Trouve l'identité de signature "Installer"
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Installer signing identity: $SIGNING_IDENTITY"
-
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Adobe/CEP/extensions" \
                    --scripts build/scripts \
@@ -170,27 +108,9 @@ jobs:
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
 
-      # 10b. Construire l'installeur EXE (Windows uniquement)
-      - name: Build EXE Installer (Windows)
-        if: runner.os == 'Windows'
-        uses: crazy-max/ghaction-inno-setup@v3
-        with:
-          script: installers/windows/setup.iss
-          pre-run: |
-            New-Item -ItemType Directory -Force -Path "build/pkg_payload"
-            Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
-
-      # 11. Uploader l'artefact final
-      - name: Upload PKG Installer (macOS)
-        if: runner.os != 'Windows'
+      # 10. Uploader l'artefact final
+      - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}
           path: build/PremiereCopilot-Installer.pkg
-
-      - name: Upload EXE Installer (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: PremiereCopilot-Installer-${{ matrix.platform }}
-          path: installers/windows/Output/PremiereCopilot-Setup.exe
