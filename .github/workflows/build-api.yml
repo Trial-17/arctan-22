@@ -18,8 +18,8 @@ jobs:
             platform: Mac-ARM
           - os: macos-13
             platform: Mac-Intel
-          - os: windows-latest
-            platform: Windows
+          # - os: windows-latest
+          #   platform: Windows
 
     # Utilise la machine virtuelle définie dans la matrice
     runs-on: ${{ matrix.os }}
@@ -73,85 +73,124 @@ jobs:
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\api.py
         shell: pwsh
 
-      # 6. Préparer les fichiers pour le ZXP (macOS & Linux)
+      # 6. Importer les certificats Apple (macOS uniquement)
+      - name: Import Apple Certificates (macOS)
+        if: runner.os != 'Windows'
+        env:
+          APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
+          APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
+          INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
+        run: |
+          # Crée un trousseau temporaire
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          
+          # Importe le certificat Application
+          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
+          security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
+          
+          # Importe le certificat Installer
+          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
+          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
+          
+          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+
+      # 7. Signer l'exécutable de l'API et ses composants (macOS)
+      - name: Sign the API Executable (macOS)
+        if: runner.os != 'Windows'
+        run: |
+          # Trouve l'identité de signature "Application"
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          echo "Using Application signing identity: $SIGNING_IDENTITY"
+          
+          # Signe tous les fichiers binaires et librairies internes
+          find dist/PremiereCopilot -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime {} \;
+          
+          # Signe l'exécutable principal en dernier
+          codesign --force --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot
+
+      # 8. Préparer les fichiers pour le ZXP (macOS & Linux)
       - name: Prepare files for ZXP (macOS & Linux)
         if: runner.os != 'Windows'
         run: |
-          echo "--- Contenu du dossier dist avant copie ---"
-          ls -R dist
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
           cp -R dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
-          echo "--- Contenu du dossier de l'API après copie ---"
-          ls -R frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
 
-      # 6b. Préparer les fichiers pour le ZXP (Windows)
+      # 8b. Préparer les fichiers pour le ZXP (Windows)
       - name: Prepare files for ZXP (Windows)
         if: runner.os == 'Windows'
         run: |
-          echo "--- Contenu du dossier dist avant copie ---"
-          Get-ChildItem -Path dist -Recurse
           mkdir frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI
           copy dist\PremiereCopilot frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
-          echo "--- Contenu du dossier de l'API après copie ---"
-          Get-ChildItem -Path frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI -Recurse
         shell: pwsh
 
-      # 7. Créer et signer le ZXP (macOS & Linux)
+      # 9. Créer et signer le ZXP (macOS & Linux)
       - name: Create and Sign ZXP (macOS & Linux)
         if: runner.os != 'Windows'
         working-directory: ./frontend
         run: |
-          echo "--- Vérification des fichiers avant signature ---"
-          ls -l
           chmod +x ./ZXPSignCmd
           ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
-      # 7b. Créer et signer le ZXP (Windows)
+      # 9b. Créer et signer le ZXP (Windows)
       - name: Create and Sign ZXP (Windows)
         if: runner.os == 'Windows'
         working-directory: ./frontend
         run: |
-          echo "--- Vérification des fichiers avant signature ---"
-          Get-ChildItem
           .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
-      # 8. Construire l'installeur PKG avec l'outil natif pkgbuild (macOS uniquement)
-      - name: Build PKG Installer with pkgbuild (macOS)
+      # 10. Construire et signer l'installeur PKG (macOS uniquement)
+      - name: Build and Sign PKG Installer (macOS)
         if: runner.os != 'Windows'
         run: |
-          # Crée le dossier qui contiendra les fichiers à installer
           mkdir -p build/pkg_root/PremiereGPTBeta
           unzip frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
           
-          # Crée un dossier pour les scripts et les copie dedans
           mkdir -p build/scripts
+          chmod +x preinstall.sh postinstall.sh
           cp preinstall.sh build/scripts/preinstall
           cp postinstall.sh build/scripts/postinstall
 
-          # Construit le PKG
+          # Trouve l'identité de signature "Installer"
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          echo "Using Installer signing identity: $SIGNING_IDENTITY"
+
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Adobe/CEP/extensions" \
                    --scripts build/scripts \
                    --identifier com.trial17.premierecopilot \
                    --version 1.0 \
+                   --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
 
-      # 9. Uploader l'artefact final
-      - name: Upload ZXP Artifact (Windows)
+      # 10b. Construire l'installeur EXE (Windows uniquement)
+      - name: Build EXE Installer (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: crazy-max/ghaction-inno-setup@v3
         with:
-          name: PremiereGPTBeta-ZXP-${{ matrix.platform }}
-          path: frontend/PremiereGPTBeta.zxp
-          
+          script: installers/windows/setup.iss
+          pre-run: |
+            New-Item -ItemType Directory -Force -Path "build/pkg_payload"
+            Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
+
+      # 11. Uploader l'artefact final
       - name: Upload PKG Installer (macOS)
         if: runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}
           path: build/PremiereCopilot-Installer.pkg
+
+      - name: Upload EXE Installer (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereCopilot-Installer-${{ matrix.platform }}
+          path: installers/windows/Output/PremiereCopilot-Setup.exe
