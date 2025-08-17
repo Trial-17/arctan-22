@@ -92,14 +92,15 @@ jobs:
         run: |
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Application signing identity: $SIGNING_IDENTITY"
-          find dist/PremiereCopilot -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime {} \;
-          codesign --force --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot
+          # Utilise --deep pour signer récursivement tous les composants, y compris le framework Python
+          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot
 
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
         run: |
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
-          cp -R dist/PremiereCopilot frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+          # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
+          cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 
       # 8. Créer et signer le ZXP
       - name: Create and Sign ZXP
