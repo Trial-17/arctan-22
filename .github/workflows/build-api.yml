@@ -27,65 +27,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Importer et vérifier les certificats Apple (Fail Fast)
-      - name: Import and Verify Apple Certificates
-        env:
-          APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
-          APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
-          INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
-          INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
-        run: |
-          # Vérification préliminaire des secrets
-          if [ -z "$APP_CERT_P12" ]; then echo "::error::Secret APPLE_DEVELOPER_CERTIFICATE_P12 is empty or not set."; exit 1; fi
-          if [ -z "$INSTALLER_CERT_P12" ]; then echo "::error::Secret APPLE_INSTALLER_CERTIFICATE_P12 is empty or not set."; exit 1; fi
-
-          # Décodage des certificats
-          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
-          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
-
-          # Inspection du contenu des certificats avant importation
-          echo "--- Inspecting Application Certificate (app_cert.p12) ---"
-          openssl pkcs12 -in app_cert.p12 -nodes -nokeys -passin pass:"$APP_CERT_PASSWORD" | openssl x509 -noout -subject
-          
-          echo "--- Inspecting Installer Certificate (installer_cert.p12) ---"
-          openssl pkcs12 -in installer_cert.p12 -nodes -nokeys -passin pass:"$INSTALLER_CERT_PASSWORD" | openssl x509 -noout -subject
-          echo "--------------------------------------------------------"
-
-          # Importation dans le trousseau
-          security create-keychain -p temp build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p temp build.keychain
-          security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
-          # Utilise l'option -A pour autoriser l'accès à toutes les applications
-          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A
-          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
-
-          # Vérification post-importation
-          echo "--- Available Signing Identities in Keychain ---"
-          security find-identity -v -p codesigning build.keychain
-          echo "----------------------------------------------"
-          
-          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
-          if [ -z "$APP_IDENTITY" ]; then
-            echo "::error::Developer ID Application certificate not found after import."
-            exit 1
-          fi
-          
-          INSTALLER_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer")
-          if [ -z "$INSTALLER_IDENTITY" ]; then
-            echo "::error::Developer ID Installer certificate not found after import. Please re-create the APPLE_INSTALLER_CERTIFICATE_P12 secret."
-            exit 1
-          fi
-          
-          echo "✅ Both Application and Installer certificates found."
-
-      # 3. Configure l'environnement Python
+      # 2. Configure l'environnement Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # 4. Crée l'environnement virtuel et installe les dépendances
+      # 3. Crée l'environnement virtuel et installe les dépendances
       - name: Install Python dependencies
         run: |
           python -m venv venv
@@ -94,12 +42,29 @@ jobs:
           pip install -r backend/requirements.txt
         shell: bash
 
-      # 5. Construire l'API avec PyInstaller
+      # 4. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
           source venv/bin/activate
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
         shell: bash
+
+      # 5. Importer les certificats Apple
+      - name: Import Apple Certificates
+        env:
+          APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
+          APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
+          INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
+        run: |
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
+          security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
+          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
+          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
       # 6. Signer l'exécutable de l'API et ses composants
       - name: Sign the API Executable
