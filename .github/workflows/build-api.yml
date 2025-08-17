@@ -39,20 +39,30 @@ jobs:
           if [ -z "$APP_CERT_P12" ]; then echo "::error::Secret APPLE_DEVELOPER_CERTIFICATE_P12 is empty or not set."; exit 1; fi
           if [ -z "$INSTALLER_CERT_P12" ]; then echo "::error::Secret APPLE_INSTALLER_CERTIFICATE_P12 is empty or not set."; exit 1; fi
 
-          # Importation
+          # Décodage des certificats
+          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
+          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
+
+          # ÉTAPE DE DÉBOGAGE : Inspection du contenu des certificats avant importation
+          echo "--- Inspecting Application Certificate (app_cert.p12) ---"
+          openssl pkcs12 -in app_cert.p12 -nodes -nokeys -passin pass:"$APP_CERT_PASSWORD" | openssl x509 -noout -subject
+          
+          echo "--- Inspecting Installer Certificate (installer_cert.p12) ---"
+          openssl pkcs12 -in installer_cert.p12 -nodes -nokeys -passin pass:"$INSTALLER_CERT_PASSWORD" | openssl x509 -noout -subject
+          echo "--------------------------------------------------------"
+
+          # Importation dans le trousseau
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
-          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
           security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
-          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
           security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
           # Vérification post-importation
-          echo "--- Available Signing Identities ---"
+          echo "--- Available Signing Identities in Keychain ---"
           security find-identity -v -p codesigning build.keychain
-          echo "------------------------------------"
+          echo "----------------------------------------------"
           
           APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
           if [ -z "$APP_IDENTITY" ]; then
