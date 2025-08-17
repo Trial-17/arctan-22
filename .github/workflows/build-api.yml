@@ -43,7 +43,7 @@ jobs:
           echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
           echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
 
-          # ÉTAPE DE DÉBOGAGE : Inspection du contenu des certificats avant importation
+          # Inspection du contenu des certificats avant importation
           echo "--- Inspecting Application Certificate (app_cert.p12) ---"
           openssl pkcs12 -in app_cert.p12 -nodes -nokeys -passin pass:"$APP_CERT_PASSWORD" | openssl x509 -noout -subject
           
@@ -56,7 +56,8 @@ jobs:
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
           security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -T /usr/bin/codesign
-          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
+          # Utilise l'option -A pour autoriser l'accès à toutes les applications
+          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
           # Vérification post-importation
