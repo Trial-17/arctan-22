@@ -27,36 +27,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configure l'environnement Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      # 3. Crée l'environnement virtuel et installe les dépendances
-      - name: Install Python dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r backend/requirements.txt
-        shell: bash
-
-      # 4. Construire l'API avec PyInstaller
-      - name: Build API with PyInstaller
-        run: |
-          source venv/bin/activate
-          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
-        shell: bash
-
-      # 5. Importer les certificats Apple
-      - name: Import Apple Certificates
+      # 2. Importer et vérifier les certificats Apple (Fail Fast)
+      - name: Import and Verify Apple Certificates
         env:
           APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
           APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
           INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
           INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
         run: |
+          # Importation
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
@@ -65,6 +44,47 @@ jobs:
           echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
           security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+
+          # Vérification
+          echo "--- Available Signing Identities ---"
+          security find-identity -v -p codesigning build.keychain
+          echo "------------------------------------"
+          
+          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1)
+          if [ -z "$APP_IDENTITY" ]; then
+            echo "::error::Developer ID Application certificate not found."
+            exit 1
+          fi
+          
+          INSTALLER_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer" | head -n 1)
+          if [ -z "$INSTALLER_IDENTITY" ]; then
+            echo "::error::Developer ID Installer certificate not found."
+            exit 1
+          fi
+          
+          echo "✅ Both Application and Installer certificates found."
+
+      # 3. Configure l'environnement Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 4. Crée l'environnement virtuel et installe les dépendances
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+        shell: bash
+
+      # 5. Construire l'API avec PyInstaller
+      - name: Build API with PyInstaller
+        run: |
+          source venv/bin/activate
+          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
+        shell: bash
 
       # 6. Signer l'exécutable de l'API et ses composants
       - name: Sign the API Executable
@@ -98,6 +118,7 @@ jobs:
           chmod +x preinstall.sh postinstall.sh
           cp preinstall.sh build/scripts/preinstall
           cp postinstall.sh build/scripts/postinstall
+          
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Installer signing identity: $SIGNING_IDENTITY"
           pkgbuild --root build/pkg_root \
