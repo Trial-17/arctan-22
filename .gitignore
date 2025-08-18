@@ -48,6 +48,3 @@ frontend/PremiereGPTBeta.zxp
 !PremiereCopilotInstaller.iss
 
 
-
-.github/workflows/build-api.yml
-!.github/workflows/build-windows.yml

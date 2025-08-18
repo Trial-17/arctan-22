@@ -58,7 +58,7 @@ jobs:
 
       # 7. Construire l'installeur EXE avec Inno Setup
       - name: Build EXE Installer
-        uses: crazy-max/ghaction-inno-setup@v3
+        uses: innosetup/inno-setup-action@v1
         with:
           # Assurez-vous que ce chemin vers votre script Inno Setup est correct
           script: PremiereCopilotInstaller.iss
@@ -73,4 +73,4 @@ jobs:
         with:
           name: PremiereCopilot-Installer-Windows
           # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
-          path: installers/windows/Output/PremiereCopilot-Setup.exe
+          path: Output/PremiereCopilot-Setup.exe
