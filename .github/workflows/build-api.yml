@@ -91,16 +91,18 @@ jobs:
       - name: Sign PyInstaller Bundle (Robust Method)
         run: |
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          BUNDLE_ID="com.trial17.premierecopilot"
           
           echo "Using Application signing identity: $SIGNING_IDENTITY"
-          echo "Using Bundle ID: $BUNDLE_ID"
 
-          # Signe chaque fichier individuel à l'intérieur du bundle
-          echo "--- Signing all individual files within the bundle ---"
-          find dist/PremiereCopilot -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp -i "$BUNDLE_ID" {} \;
+          # 1. Signe d'abord toutes les librairies et binaires internes avec les droits
+          echo "--- Signing all internal binaries and libraries ---"
+          find dist/PremiereCopilot/_internal -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist {} \;
 
-          # Vérification finale et stricte de la signature
+          # 2. Signe l'exécutable principal en dernier avec les droits
+          echo "--- Signing the main executable ---"
+          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist dist/PremiereCopilot
+
+          # 3. Vérification finale et stricte de la signature
           echo "--- Verifying final bundle signature ---"
           codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
 

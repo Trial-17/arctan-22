@@ -44,3 +44,4 @@ frontend/PremiereGPTBeta.zxp
 !postinstall.sh
 !preinstall.sh
 !PremiereCopilot_ARM.pkgproj
+!entitlements.plist
