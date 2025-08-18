@@ -113,18 +113,36 @@ jobs:
           # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
           cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 
-      # 8. Créer et signer le ZXP
+      # 8. Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
+          echo "--- Making ZXPSignCmd executable ---"
           chmod +x ./ZXPSignCmd
-          # Génère un nouveau certificat auto-signé à chaque build
-          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2050" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
-          # Signe l'extension avec le certificat qui vient d'être créé
-          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2050"
-          # Vérifie la signature
+
+          echo "--- Generating self-signed certificate for ZXP ---"
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" \
+            -email "admin@premierecopilot.com" \
+            -orgUnit "PremiereGPTBeta" \
+            -validityDays 3650
+
+          if [ ! -f "PremiereGPTBeta.p12" ]; then
+            echo "::error::Failed to generate self-signed certificate."
+            exit 1
+          fi
+
+          echo "--- Signing the extension folder into ZXP ---"
+          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+
+          if [ ! -f "PremiereGPTBeta.zxp" ]; then
+            echo "::error::Failed to create ZXP."
+            exit 1
+          fi
+
+          echo "--- Verifying ZXP signature ---"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
+          
       # 9. Construire et signer l'installeur PKG
       - name: Build and Sign PKG Installer
         run: |
