@@ -1,0 +1,76 @@
+# Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
+name: Build Windows Installer
+
+# Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
+on:
+  push:
+    branches: [ main ]
+  # Permet aussi de le lancer manuellement depuis l'interface de GitHub
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    # Utilise une machine virtuelle Windows
+    runs-on: windows-latest
+
+    steps:
+      # 1. Récupère le code de votre dépôt
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configure l'environnement Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 3. Crée l'environnement virtuel et installe les dépendances
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          .\venv\Scripts\activate
+          pip install --upgrade pip
+          pip install -r backend\requirements.txt
+        shell: pwsh
+
+      # 4. Construire l'API avec PyInstaller
+      - name: Build API with PyInstaller
+        run: |
+          .\venv\Scripts\activate
+          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\api.py
+        shell: pwsh
+
+      # 5. Préparer les fichiers pour le ZXP
+      - name: Prepare files for ZXP
+        run: |
+          New-Item -ItemType Directory -Force -Path "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI"
+          Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI" -Recurse
+        shell: pwsh
+
+      # 6. Créer et signer le ZXP
+      - name: Create and Sign ZXP
+        working-directory: ./frontend
+        run: |
+          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2050" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2050"
+          .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
+        shell: pwsh
+
+      # 7. Construire l'installeur EXE avec Inno Setup
+      - name: Build EXE Installer
+        uses: crazy-max/ghaction-inno-setup@v3
+        with:
+          # Assurez-vous que ce chemin vers votre script Inno Setup est correct
+          script: PremiereCopilotInstaller.iss
+          # Prépare les fichiers pour Inno Setup en dézippant le ZXP
+          pre-run: |
+            New-Item -ItemType Directory -Force -Path "build/pkg_payload"
+            Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
+
+      # 8. Uploader l'artefact final
+      - name: Upload EXE Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereCopilot-Installer-Windows
+          # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
+          path: installers/windows/Output/PremiereCopilot-Setup.exe

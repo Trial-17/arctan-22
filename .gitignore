@@ -45,3 +45,9 @@ frontend/PremiereGPTBeta.zxp
 !preinstall.sh
 !PremiereCopilot_ARM.pkgproj
 !entitlements.plist
+!PremiereCopilotInstaller.iss
+
+
+
+.github/workflows/build-api.yml
+!.github/workflows/build-windows.yml
