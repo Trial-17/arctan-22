@@ -33,7 +33,7 @@ ArchitecturesInstallIn64BitMode=x64
 
 [Files]
 ; Extension CEP - CORRECTION ICI
-Source: "build\pkg_payload\PremiereGPTBeta\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "build\pkg_payload\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Dirs]
 ; Création des dossiers dans les Documents de l'utilisateur
