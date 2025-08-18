@@ -56,18 +56,21 @@ jobs:
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
-      # 7. Construire l'installeur EXE avec Inno Setup
+      # 7. Préparer les fichiers pour l'installeur Inno Setup
+      - name: Prepare files for Inno Setup
+        run: |
+          New-Item -ItemType Directory -Force -Path "build/pkg_payload"
+          Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
+        shell: pwsh
+        
+      # 8. Construire l'installeur EXE avec Inno Setup
       - name: Build EXE Installer
-        uses: innosetup/inno-setup-action@v1
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           # Assurez-vous que ce chemin vers votre script Inno Setup est correct
-          script: PremiereCopilotInstaller.iss
-          # Prépare les fichiers pour Inno Setup en dézippant le ZXP
-          pre-run: |
-            New-Item -ItemType Directory -Force -Path "build/pkg_payload"
-            Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
+          path: PremiereCopilotInstaller.iss
 
-      # 8. Uploader l'artefact final
+      # 9. Uploader l'artefact final
       - name: Upload EXE Installer
         uses: actions/upload-artifact@v4
         with:
