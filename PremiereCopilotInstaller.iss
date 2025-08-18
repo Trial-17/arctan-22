@@ -5,9 +5,9 @@ var
 begin
   if CurStep = ssInstall then
   begin
-    OldDir1 := ExpandConstant('{pf32}\Common Files\Adobe\CEP\extensions\PremiereGPTBeta');
-    OldDir2 := ExpandConstant('{pf32}\Common Files\Adobe\CEP\extensions\PremiereCopilot');
-    OldDir3 := ExpandConstant('{pf32}\Common Files\Adobe\CEP\extensions\Premierecopilot');
+    OldDir1 := ExpandConstant('{commonpf64}\Adobe\CEP\extensions\PremiereGPTBeta');
+    OldDir2 := ExpandConstant('{commonpf64}\Adobe\CEP\extensions\PremiereCopilot');
+    OldDir3 := ExpandConstant('{commonpf64}\Adobe\CEP\extensions\Premierecopilot');
 
     if DirExists(OldDir1) then
       DelTree(OldDir1, True, True, True);
@@ -22,18 +22,18 @@ end;
 [Setup]
 AppName=PremiereGPTBeta
 AppVersion=1.0
-DefaultDirName={pf32}\Common Files\Adobe\CEP\extensions\PremiereGPTBeta
+DefaultDirName={commonpf64}\Adobe\CEP\extensions\PremiereGPTBeta
 DisableProgramGroupPage=yes
 Uninstallable=no
-OutputDir=.
-OutputBaseFilename=PremiereCopilotSetup
+OutputDir=Output
+OutputBaseFilename=PremiereCopilot-Setup
 Compression=lzma
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesInstallIn64BitMode=x64
 
 [Files]
-; Extension CEP
-Source: "PremiereGPTBeta\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+; Extension CEP - CORRECTION ICI
+Source: "build\pkg_payload\PremiereGPTBeta\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Dirs]
 ; Création des dossiers dans les Documents de l'utilisateur
