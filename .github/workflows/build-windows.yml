@@ -47,7 +47,6 @@ jobs:
           Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI" -Recurse
         shell: pwsh
 
-      # 6
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
@@ -58,8 +57,8 @@ jobs:
             -validityDays 3650
 
           $p12Path = Resolve-Path ".\PremiereGPTBeta.p12"
-          $zxpPath = Resolve-Path ".\PremiereGPTBeta.zxp"
           $extPath = Resolve-Path ".\PremiereGPTBeta"
+          $zxpPath = Join-Path (Get-Location) "PremiereGPTBeta.zxp"
 
           if (-not (Test-Path $p12Path)) {
             Write-Error "Failed to generate self-signed certificate."
