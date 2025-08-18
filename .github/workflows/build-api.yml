@@ -87,13 +87,21 @@ jobs:
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/api.py
         shell: bash
 
-      # 6. Signer l'exécutable de l'API et ses composants
-      - name: Sign the API Executable
+      # 6. Signer correctement tout le bundle PyInstaller
+      - name: Sign PyInstaller Bundle
         run: |
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Application signing identity: $SIGNING_IDENTITY"
-          # Utilise --deep pour signer récursivement, sans fichier entitlements
-          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime dist/PremiereCopilot
+
+          # 1. Resign tout ce qu’il y a dans _internal
+          find dist/PremiereCopilot/_internal -type f \( -name "*.dylib" -o -name "*.so" -o -name "Python" \) -print0 | \
+            xargs -0 -I {} codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {}
+
+          # 2. Resign l’exécutable principal (qui englobe tout)
+          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp dist/PremiereCopilot
+
+          # 3. Vérification
+          codesign -vvv dist/PremiereCopilot
 
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
