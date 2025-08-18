@@ -88,23 +88,21 @@ jobs:
         shell: bash
 
       # 6. Signer correctement tout le bundle PyInstaller
-      - name: Sign PyInstaller Bundle
+      - name: Sign PyInstaller Bundle (Robust Method)
         run: |
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          echo "Using Application signing identity: $SIGNING_IDENTITY"
-
-          # 1. Signe toutes les librairies internes en premier
-          find dist/PremiereCopilot/_internal -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {} \;
+          BUNDLE_ID="com.trial17.premierecopilot"
           
-          # 2. Signe le framework Python embarqué
-          codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp dist/PremiereCopilot/_internal/Python.framework
+          echo "Using Application signing identity: $SIGNING_IDENTITY"
+          echo "Using Bundle ID: $BUNDLE_ID"
 
-          # 3. Signe l'exécutable principal avec --deep pour s'assurer que tout est couvert
-          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp dist/PremiereCopilot
+          # Signe chaque fichier individuel à l'intérieur du bundle
+          echo "--- Signing all individual files within the bundle ---"
+          find dist/PremiereCopilot -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp -i "$BUNDLE_ID" {} \;
 
-          # 4. Vérification finale et stricte de la signature
-          echo "--- Verifying final signature ---"
-          codesign --verify --deep --strict --verbose=2 dist/PremiereCopilot
+          # Vérification finale et stricte de la signature
+          echo "--- Verifying final bundle signature ---"
+          codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
 
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
@@ -118,8 +116,8 @@ jobs:
         working-directory: ./frontend
         run: |
           chmod +x ./ZXPSignCmd
-          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
-          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2050" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2050"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
       # 9. Construire et signer l'installeur PKG
@@ -153,14 +151,14 @@ jobs:
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
 
-      # 10. Notariser et agrafer l'installeur PKG
-      - name: Notarize and Staple PKG Installer
-        uses: lando/notarize-action@v2
-        with:
-          product-path: build/PremiereCopilot-Installer.pkg
-          appstore-connect-username: ${{ secrets.APPLE_ID }}
-          appstore-connect-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+      # 10. Notariser et agrafer l'installeur PKG (Mise en pause)
+      # - name: Notarize and Staple PKG Installer
+      #   uses: lando/notarize-action@v2
+      #   with:
+      #     product-path: build/PremiereCopilot-Installer.pkg
+      #     appstore-connect-username: ${{ secrets.APPLE_ID }}
+      #     appstore-connect-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      #     appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
 
       # 11. Uploader l'artefact final
       - name: Upload PKG Installer
