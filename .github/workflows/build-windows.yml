@@ -47,12 +47,27 @@ jobs:
           Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI" -Recurse
         shell: pwsh
 
-      # 6. Créer et signer le ZXP
+      # 6. Créer et signer le ZXP (méthode robuste)
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
+          echo "--- Generating self-signed certificate for ZXP ---"
           .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2050" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+
+          if (-not (Test-Path ".\PremiereGPTBeta.p12")) {
+            echo "::error::Failed to generate self-signed certificate."
+            exit 1
+          }
+
+          echo "--- Signing the extension folder into ZXP ---"
           .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2050"
+
+          if (-not (Test-Path ".\PremiereGPTBeta.zxp")) {
+            echo "::error::Failed to create ZXP."
+            exit 1
+          }
+
+          echo "--- Verifying ZXP signature ---"
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
