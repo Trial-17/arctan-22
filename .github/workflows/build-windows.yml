@@ -52,7 +52,6 @@ jobs:
         run: |
           echo "--- Generating self-signed certificate for ZXP ---"
 
-          # Variables
           CERT_NAME="premiere-copilot"
           CERT_P12="${CERT_NAME}.p12"
           CERT_PASS="password123"
@@ -60,13 +59,14 @@ jobs:
           ZXP_OUTPUT="PremiereCopilot.zxp"
           EXTENSION_DIR="PremiereCopilot"
 
-          # Génération d’un certificat auto-signé au format PKCS12 (.p12)
-          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          # Sujet simple pour éviter l'erreur
+          openssl req -x509 -nodes -days 365 \
+            -newkey rsa:2048 \
             -subj "/C=US/ST=CA/L=SanJose/O=PremiereCopilot/OU=Dev/CN=${CN_NAME}" \
             -keyout "${CERT_NAME}.key" \
             -out "${CERT_NAME}.crt"
 
-          # Conversion du certificat et clé privée en .p12
+          # Convertir en PKCS12
           openssl pkcs12 -export \
             -inkey "${CERT_NAME}.key" \
             -in "${CERT_NAME}.crt" \
