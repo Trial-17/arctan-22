@@ -1,5 +1,5 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build Windows Installer
+name: Build Windows ZXP
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build-windows-zxp:
     # Utilise une machine virtuelle Windows
     runs-on: windows-latest
 
@@ -47,61 +47,18 @@ jobs:
           Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI" -Recurse
         shell: pwsh
 
-      - name: Step 6 - Generate self-signed certificate and sign ZXP
-        shell: bash
+      # 6. Créer et signer le ZXP
+      - name: Create and Sign ZXP
+        working-directory: ./frontend
         run: |
-          echo "--- Generating self-signed certificate for ZXP ---"
-
-          CERT_NAME="premiere-copilot"
-          CERT_P12="${CERT_NAME}.p12"
-          CERT_PASS="password123"
-          CN_NAME="Premiere Copilot Dev Cert"
-          ZXP_OUTPUT="PremiereCopilot.zxp"
-          EXTENSION_DIR="PremiereCopilot"
-
-          # Sujet simple pour éviter l'erreur
-          openssl req -x509 -nodes -days 365 \
-            -newkey rsa:2048 \
-            -subj "/C=US/ST=CA/L=SanJose/O=PremiereCopilot/OU=Dev/CN=${CN_NAME}" \
-            -keyout "${CERT_NAME}.key" \
-            -out "${CERT_NAME}.crt"
-
-          # Convertir en PKCS12
-          openssl pkcs12 -export \
-            -inkey "${CERT_NAME}.key" \
-            -in "${CERT_NAME}.crt" \
-            -out "${CERT_P12}" \
-            -password pass:${CERT_PASS}
-
-          echo "--- Certificate generated successfully: ${CERT_P12} ---"
-
-          echo "--- Signing the extension folder into ZXP ---"
-          npx zxpsign \
-            --sign "${EXTENSION_DIR}" \
-            "${ZXP_OUTPUT}" \
-            --cert "${CERT_P12}" \
-            --password "${CERT_PASS}"
-
-          echo "--- ZXP created successfully: ${ZXP_OUTPUT} ---"
-
-      # 7. Préparer les fichiers pour l'installeur Inno Setup
-      - name: Prepare files for Inno Setup
-        run: |
-          New-Item -ItemType Directory -Force -Path "build/pkg_payload"
-          Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
+          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          .\ZXPSignCmd.exe -sign ".\PremiereGPTBeta" ".\PremiereGPTBeta.zxp" ".\PremiereGPTBeta.p12" "plugin2025"
+          .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
-        
-      # 8. Construire l'installeur EXE avec Inno Setup
-      - name: Build EXE Installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
-        with:
-          # Assurez-vous que ce chemin vers votre script Inno Setup est correct
-          path: PremiereCopilotInstaller.iss
 
-      # 9. Uploader l'artefact final
-      - name: Upload EXE Installer
+      # 7. Uploader le ZXP final comme un "artefact"
+      - name: Upload ZXP Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereCopilot-Installer-Windows
-          # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
-          path: Output/PremiereCopilot-Setup.exe
+          name: PremiereGPTBeta-ZXP-Windows
+          path: frontend/PremiereGPTBeta.zxp
