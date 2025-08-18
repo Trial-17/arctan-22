@@ -1,5 +1,5 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build Windows ZXP
+name: Build Windows Installer
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows-zxp:
+  build-windows-installer:
     # Utilise une machine virtuelle Windows
     runs-on: windows-latest
 
@@ -56,9 +56,24 @@ jobs:
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
-      # 7. Uploader le ZXP final comme un "artefact"
-      - name: Upload ZXP Artifact
+      # 7. Préparer les fichiers pour l'installeur Inno Setup
+      - name: Prepare files for Inno Setup
+        run: |
+          New-Item -ItemType Directory -Force -Path "build/pkg_payload"
+          Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
+        shell: pwsh
+        
+      # 8. Construire l'installeur EXE avec Inno Setup
+      - name: Build EXE Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          # Assurez-vous que ce chemin vers votre script Inno Setup est correct
+          path: PremiereCopilotInstaller.iss
+
+      # 9. Uploader l'installeur EXE final comme un "artefact"
+      - name: Upload EXE Installer
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereGPTBeta-ZXP-Windows
-          path: frontend/PremiereGPTBeta.zxp
+          name: PremiereCopilot-Installer-Windows
+          # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
+          path: Output/PremiereCopilot-Setup.exe
