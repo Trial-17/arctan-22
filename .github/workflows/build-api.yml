@@ -93,15 +93,18 @@ jobs:
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Application signing identity: $SIGNING_IDENTITY"
 
-          # 1. Resign tout ce qu’il y a dans _internal
-          find dist/PremiereCopilot/_internal -type f \( -name "*.dylib" -o -name "*.so" -o -name "Python" \) -print0 | \
-            xargs -0 -I {} codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {}
+          # 1. Signe toutes les librairies internes en premier
+          find dist/PremiereCopilot/_internal -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {} \;
+          
+          # 2. Signe le framework Python embarqué
+          codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp dist/PremiereCopilot/_internal/Python.framework
 
-          # 2. Resign l’exécutable principal (qui englobe tout)
+          # 3. Signe l'exécutable principal avec --deep pour s'assurer que tout est couvert
           codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp dist/PremiereCopilot
 
-          # 3. Vérification
-          codesign -vvv dist/PremiereCopilot
+          # 4. Vérification finale et stricte de la signature
+          echo "--- Verifying final signature ---"
+          codesign --verify --deep --strict --verbose=2 dist/PremiereCopilot
 
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
@@ -150,7 +153,16 @@ jobs:
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
 
-      # 10. Uploader l'artefact final
+      # 10. Notariser et agrafer l'installeur PKG
+      - name: Notarize and Staple PKG Installer
+        uses: lando/notarize-action@v2
+        with:
+          product-path: build/PremiereCopilot-Installer.pkg
+          appstore-connect-username: ${{ secrets.APPLE_ID }}
+          appstore-connect-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+
+      # 11. Uploader l'artefact final
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
