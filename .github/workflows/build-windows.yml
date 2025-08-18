@@ -47,35 +47,42 @@ jobs:
           Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI" -Recurse
         shell: pwsh
 
-      - name: Create and Sign ZXP
-        working-directory: ./frontend
+      - name: Step 6 - Generate self-signed certificate and sign ZXP
+        shell: bash
         run: |
-          Write-Output "--- Generating self-signed certificate for ZXP ---"
-          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2050" "PremiereGPTBeta.p12" `
-            -email "admin@premierecopilot.com" `
-            -orgUnit "PremiereGPTBeta" `
-            -validityDays 3650
+          echo "--- Generating self-signed certificate for ZXP ---"
 
-          $p12Path = Resolve-Path ".\PremiereGPTBeta.p12"
-          $extPath = Resolve-Path ".\PremiereGPTBeta"
-          $zxpPath = Join-Path (Get-Location) "PremiereGPTBeta.zxp"
+          # Variables
+          CERT_NAME="premiere-copilot"
+          CERT_P12="${CERT_NAME}.p12"
+          CERT_PASS="password123"
+          CN_NAME="Premiere Copilot Dev Cert"
+          ZXP_OUTPUT="PremiereCopilot.zxp"
+          EXTENSION_DIR="PremiereCopilot"
 
-          if (-not (Test-Path $p12Path)) {
-            Write-Error "Failed to generate self-signed certificate."
-            exit 1
-          }
+          # Génération d’un certificat auto-signé au format PKCS12 (.p12)
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -subj "/C=US/ST=CA/L=SanJose/O=PremiereCopilot/OU=Dev/CN=${CN_NAME}" \
+            -keyout "${CERT_NAME}.key" \
+            -out "${CERT_NAME}.crt"
 
-          Write-Output "--- Signing the extension folder into ZXP ---"
-          .\ZXPSignCmd.exe -sign "$extPath" "$zxpPath" "$p12Path" "plugin2050"
+          # Conversion du certificat et clé privée en .p12
+          openssl pkcs12 -export \
+            -inkey "${CERT_NAME}.key" \
+            -in "${CERT_NAME}.crt" \
+            -out "${CERT_P12}" \
+            -password pass:${CERT_PASS}
 
-          if (-not (Test-Path $zxpPath)) {
-            Write-Error "Failed to create ZXP."
-            exit 1
-          }
+          echo "--- Certificate generated successfully: ${CERT_P12} ---"
 
-          Write-Output "--- Verifying ZXP signature ---"
-          .\ZXPSignCmd.exe -verify "$zxpPath" -certinfo
-        shell: pwsh
+          echo "--- Signing the extension folder into ZXP ---"
+          npx zxpsign \
+            --sign "${EXTENSION_DIR}" \
+            "${ZXP_OUTPUT}" \
+            --cert "${CERT_P12}" \
+            --password "${CERT_PASS}"
+
+          echo "--- ZXP created successfully: ${ZXP_OUTPUT} ---"
 
       # 7. Préparer les fichiers pour l'installeur Inno Setup
       - name: Prepare files for Inno Setup
