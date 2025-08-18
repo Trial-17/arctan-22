@@ -115,17 +115,13 @@ jobs:
 
       # 8. Créer et signer le ZXP
       - name: Create and Sign ZXP
-        env:
-          ZXP_CERT: ${{ secrets.ZXP_SIGNING_CERT_P12 }}
-          ZXP_PASS: ${{ secrets.ZXP_SIGNING_CERT_PASSWORD }}
         working-directory: ./frontend
         run: |
-          # Décode le certificat depuis les secrets
-          echo "$ZXP_CERT" | base64 --decode > PremiereGPTBeta.p12
-          
           chmod +x ./ZXPSignCmd
-          # Signe l'extension en utilisant le certificat existant
-          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "$ZXP_PASS"
+          # Génère un nouveau certificat auto-signé à chaque build
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2050" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
+          # Signe l'extension avec le certificat qui vient d'être créé
+          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2050"
           # Vérifie la signature
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
