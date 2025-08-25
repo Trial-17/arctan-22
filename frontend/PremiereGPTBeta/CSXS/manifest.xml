@@ -12,7 +12,7 @@
 
 	<ExecutionEnvironment>
 		<HostList>
-			<Host Name="PPRO" Version="[22.0,99.9]" />
+			<Host Name="PPRO" Version="18.0" />
 		</HostList>
 
 	<LocaleList>
@@ -20,7 +20,7 @@
 	</LocaleList>
 
 	<RequiredRuntimeList>
-		<RequiredRuntime Name="CSXS" Version="11.0" />
+		<RequiredRuntime Name="CSXS" Version="5.0" />
 	</RequiredRuntimeList>
 </ExecutionEnvironment>
 
