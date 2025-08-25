@@ -5,9 +5,9 @@ var
 begin
   if CurStep = ssInstall then
   begin
-    OldDir1 := ExpandConstant('{commonpf64}\Adobe\CEP\extensions\PremiereGPTBeta');
-    OldDir2 := ExpandConstant('{commonpf64}\Adobe\CEP\extensions\PremiereCopilot');
-    OldDir3 := ExpandConstant('{commonpf64}\Adobe\CEP\extensions\Premierecopilot');
+    OldDir1 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTBeta');
+    OldDir2 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereCopilot');
+    OldDir3 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\Premierecopilot');
 
     if DirExists(OldDir1) then
       DelTree(OldDir1, True, True, True);
@@ -22,7 +22,7 @@ end;
 [Setup]
 AppName=PremiereGPTBeta
 AppVersion=1.0
-DefaultDirName={commonpf64}\Adobe\CEP\extensions\PremiereGPTBeta
+DefaultDirName={commoncf}\Adobe\CEP\extensions\PremiereGPTBeta
 DisableProgramGroupPage=yes
 Uninstallable=no
 OutputDir=Output
