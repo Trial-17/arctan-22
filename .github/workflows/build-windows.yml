@@ -56,6 +56,13 @@ jobs:
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
+      # 6.1. Uploader l'artefact ZXP
+      - name: Upload ZXP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereGPTBeta-ZXP-Windows
+          path: frontend/PremiereGPTBeta.zxp
+
       # 7. Préparer les fichiers pour l'installeur Inno Setup
       - name: Prepare files for Inno Setup
         run: |
