@@ -436,10 +436,10 @@ def audio_research(request: AudioResearchRequest):
 
 
 
-# if __name__ == "__main__":
-#     from api import app
-#     uvicorn.run(app, host="127.0.0.1", port=8000)
+if __name__ == "__main__":
+    from api import app
+    uvicorn.run(app, host="127.0.0.1", port=8000)
         
 
-if __name__ == "__main__":
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
+# if __name__ == "__main__":
+#     uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
