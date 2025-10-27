@@ -2409,13 +2409,13 @@ $._MYFUNCTIONS.exportProjectStructureToJSON = function() {
 
 // Create Sequence
 $._MYFUNCTIONS.updateSequencePreset = function(width, height, framerate) {
-    var extensionName = "PremiereGPTBeta";
-    var extensionsFolder = Folder.commonFiles.fsName + "/Adobe/CEP/extensions/";
-    var presetPath = extensionsFolder + extensionName + "/js/libs/sequence/PRESET_EDIT.sqpreset";
+    // Utiliser le preset dans le dossier Documents
+    var documentsFolder = Folder.myDocuments.fsName;
+    var presetPath = documentsFolder + "/Adobe/Premiere Pro/Premiere Copilot/PRESET_EDIT.sqpreset";
     var presetFile = new File(presetPath);
 
     if (!presetFile.exists) {
-        alert("The preset file was not found at the location: " + presetPath);
+        alert("Le fichier preset n'a pas été trouvé à l'emplacement: " + presetPath);
         return;
     }
 
@@ -2467,10 +2467,9 @@ $._MYFUNCTIONS.updateSequencePreset = function(width, height, framerate) {
 }
 
 $._MYFUNCTIONS.createSequenceFromPreset = function(presetFileName, seqName) {
-    var extensionName = "PremiereGPTBeta";
-    var extensionsFolder = Folder.commonFiles.fsName + "/Adobe/CEP/extensions/";
-    var basePath = extensionsFolder + extensionName + "/";
-    var presetPath = basePath + presetFileName;
+    // Utiliser le preset dans le dossier Documents
+    var documentsFolder = Folder.myDocuments.fsName;
+    var presetPath = documentsFolder + "/Adobe/Premiere Pro/Premiere Copilot/PRESET_EDIT.sqpreset";
     var presetFile = new File(presetPath);
     var proj = app.project;
     var newSeq = proj.newSequence(seqName, presetPath);

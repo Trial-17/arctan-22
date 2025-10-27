@@ -8,6 +8,7 @@ import base64
 import asyncio
 import os
 import re
+import shutil
 from enum import Enum
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -567,95 +568,6 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
     try : 
         
 
-    #     # 1. Récupération de la structure du projet
-    #     project_V0 = await get_project_structure.ainvoke({"include_metadata": include_metadata})
-        
-        
-    #     # 2. Déterminer le contexte a envoyer
-    #     full_prompt = f"""    
-    #     ### JSON project :
-    #     {project_V0}
-        
-    #     ### User prompt : 
-    #     {prompt}
-    #         """.strip()
-
-    #     system_instruction="""
-    # You are a professional video editor. You receive a JSON representation of the project architecture.
-    # Your task is to select the right context that will be required to perform the user prompt.
-    # It will be then send to an agent that will defin alist of tasks based on this context.
-
-    # ### TASKS:
-    # - Analyse the user prompt
-    # - Select the right context that will be required to perform the user prompt and to understand the user intent
-    # - Return the full list of the ids of the context or 'all' if all the context is needed
-
-    # ### RULES:
-    # - if you want to include a folder, include it id, not its childrens
-    # - if you want to include a sequence, and audio, srt, video, image, include it id
-    # - if no context is needed, return an empty list
-    # - if all the context is needed, return a unique item id named "all"
-    #         """, 
-
-    #     structured_output = {
-    #         "type": "array",
-    #         "items": {
-    #             "type": "string",
-    #             "description": "The id of the bin, sequence, item to add to the context, or 'all' if all the context is needed"
-    #         }
-    #     }
-                
-    #     context = gemini_call(full_prompt, system_instruction, structured_output, None, 0.3, MODEL_CONTEXT_1)
-            
-
-    #     # 3. Retraitement du contexte : élimination des introuvés
-
-
-    #     final_context = []
-    #     processed_ids = set()  # Pour éviter les doublons
-            
-    #     if context:
-    #         # Cas spécial : si "all" est présent
-    #         if "all" in context:
-    #             project_data = json.loads(project_V0)
-    #             final_context = get_all_descendants(project_data, project_data.get('name', 'Project'))
-    #         else:
-    #             project_data = json.loads(project_V0)
-                
-    #             for item_id in context:
-    #                 # Vérifier si déjà traité (éviter doublons)
-    #                 if item_id in processed_ids:
-    #                     continue
-                    
-    #                 # Chercher l'item dans le projet
-    #                 found_item = find_item_by_id(project_data, item_id, project_data.get('name', 'Project'))
-                    
-    #                 if found_item:
-    #                     processed_ids.add(item_id)
-                        
-    #                     # Si c'est un Bin (dossier), inclure toute la descendance
-    #                     if found_item.get("type") == "Bin":
-    #                         descendants = get_all_descendants(found_item, found_item["path"])
-    #                         final_context.extend(descendants)
-                            
-    #                         # Marquer tous les descendants comme traités pour éviter doublons
-    #                         def mark_descendants_processed(node):
-    #                             if node.get("nodeId"):
-    #                                 processed_ids.add(node.get("nodeId"))
-    #                             if "children" in node:
-    #                                 for child in node["children"]:
-    #                                     mark_descendants_processed(child)
-                            
-    #                         for desc in descendants:
-    #                             mark_descendants_processed(desc)
-    #                     else:
-    #                         # Pour les autres types (Sequence, Audio, Video, etc.)
-    #                         final_context.append(found_item)
-    #                 else:
-    #                     # ID non trouvé, on l'ignore
-    #                     print(f"Warning: ID {item_id} not found in project")
-            
-    #         # print("Final context:", json.dumps(final_context, indent=2))
             
         # final_context = await get_project_context(prompt, include_metadata) 
         final_context = await get_project_structure.ainvoke({"include_metadata": include_metadata})
@@ -867,7 +779,40 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
     
     print("--- [ACTION CALL PROJECT] --- " + str(liste_actions))
 
+    # 4.5. Vérifier si une action de création de séquence est présente et copier le preset si nécessaire
 
+    for action in liste_actions:
+        if action.get("name") == "create_sequence":
+
+            try:
+                # Définir le chemin de destination du preset
+                documents_preset_dir = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot"
+                documents_preset_path = documents_preset_dir / "PRESET_EDIT.sqpreset"
+                
+                # Créer le dossier s'il n'existe pas
+                documents_preset_dir.mkdir(parents=True, exist_ok=True)
+                print("Documents preset dir created")
+                # Copier le preset s'il n'existe pas déjà
+                if not documents_preset_path.exists():
+                    # Trouver le preset source - remonter à la racine du projet (arctan-22/)
+                    project_root = Path(__file__).parent.parent
+                    print(f"Project root: {project_root}")
+                    
+                    # Chemin dans la version de développement
+                    source_preset = project_root / "sequence" / "PRESET_EDIT.sqpreset"
+                    
+
+                    if source_preset.exists():
+                        shutil.copy2(source_preset, documents_preset_path)
+                        print(f"Preset copié vers: {documents_preset_path}")
+                    else:
+                        print(f"Attention: Preset source non trouvé à {source_preset}")
+                
+            except Exception as e:
+                print(f"Erreur lors de la copie du preset: {str(e)}")
+            
+            # Une seule copie suffit, on sort de la boucle
+            break
 
     # 5. Application des opérations à effectuer
     config.API_STATUS = "Performing actions..."
