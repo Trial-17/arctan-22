@@ -262,158 +262,162 @@ async def get_project_structure(include_metadata: bool = False, skip_labelize: b
     - USE Metadata only if you need to know the transcription of audio, the music tempo, the description of the clips or images to perform the task
 
     """
-    call_id = str(uuid.uuid4())
+    try : 
+        call_id = str(uuid.uuid4())
 
-    config.API_STATUS = "Getting project structure..."
+        config.API_STATUS = "Getting project structure..."
 
-    
-    # 1. Création / importation de la base
-    if include_metadata:
-        path_clip_db = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot" / "index.json"
         
-    
-    # 1. Récupération de la structure du projet
-    PENDING_JS_CALLS[call_id] = {
-        "args": {"script": "$._MYFUNCTIONS.exportProjectStructureToJSON();"},
-        "result": None,
-        "status": "pending"
-    }
-    
-    timeout = 30
-    start_time = time.time()
-    result = None
-    while time.time() - start_time < timeout:
-        if call_id in PENDING_JS_CALLS and PENDING_JS_CALLS[call_id]["status"] == "completed":
-            result = PENDING_JS_CALLS[call_id]["result"]
-            del PENDING_JS_CALLS[call_id]
-            break
-        await asyncio.sleep(0.5)
-        
-    if call_id in PENDING_JS_CALLS:
-        del PENDING_JS_CALLS[call_id]
-    
-    if result is None: 
-        return "Error: Timed out waiting for JavaScript function to execute."
-    
-    
-    # 2. Enregistrement du projet (on peut écraser sans soucis)
-    base_path = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot"
-    Path(base_path).mkdir(parents=True, exist_ok=True)
-
-    project_data = json.loads(result)
-    project_id = project_data.get("projectID", "")
-    file_path = base_path / f"{project_id}.json"
-    with open(file_path, 'w', encoding='utf-8') as f:
-        json.dump(project_data, f, indent=2, ensure_ascii=False)
-
-
-
-    
-    
-    # 3. On récupère tous les paths des fichiers images et vidéos
-    def extract_media_paths(item, paths_list):
-        """Parcourt récursivement un élément et extrait tous les paths des médias vidéo et image"""
-        if isinstance(item, dict):
-            # Vérifier si l'élément actuel est une vidéo ou une image
-            item_type = item.get('type', '')
-            if item_type in ['Video', 'Image'] and 'mediaPath' in item:
-                media_path = item['mediaPath']
-                if media_path and media_path != "N/A":
-                    paths_list.append({
-                        'name': item.get('name', ''),
-                        'type': item_type,
-                        'path': media_path,
-                        'nodeId': item.get('nodeId', '')
-                    })
+        # 1. Création / importation de la base
+        if include_metadata:
+            path_clip_db = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot" / "index.json"
             
-            # Parcourir récursivement les enfants s'ils existent
-            if 'children' in item and isinstance(item['children'], list):
-                for child in item['children']:
-                    extract_media_paths(child, paths_list)
-        elif isinstance(item, list):
-            # Si c'est une liste, parcourir chaque élément
-            for child in item:
-                extract_media_paths(child, paths_list)
-    
-    media_paths = []
-    extract_media_paths(project_data, media_paths)
-    # print(f"Trouvé {len(media_paths)} fichiers média (Video/Image)")
-
-    
-    
-    
-    # 4. On cherche les metadatas de ces fichiers médias, sinon on appelle le tool labelizer
-    path_clip_db = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot" / "index.json"
-    
-    # Créer le fichier index.json s'il n'existe pas
-    if not path_clip_db.exists():
-        path_clip_db.parent.mkdir(parents=True, exist_ok=True)
-        with open(path_clip_db, 'w', encoding='utf-8') as f:
-            json.dump([], f, indent=2, ensure_ascii=False)
-        print(f"Fichier index.json créé : {path_clip_db}")
-    
-    # Charger la base de données des rushs
-    with open(path_clip_db, 'r', encoding='utf-8') as f:
-        clip_db = json.load(f)
-
-    existing_paths_in_db = {item['mediaPath'] for item in clip_db}
-
-    missing_media = []
-    for media in media_paths:
-        media_path = media['path']
-
-        if media_path not in existing_paths_in_db:
-            missing_media.append(media_path)
-
-    # if missing_media and include_metadata and not skip_labelize:
-    #     print(f"\nRésumé : {len(missing_media)} fichiers nécessitent une analyse des métadonnées")
-    #     await main_fast_labelize(missing_media)
+        
+        # 1. Récupération de la structure du projet
+        PENDING_JS_CALLS[call_id] = {
+            "args": {"script": "$._MYFUNCTIONS.exportProjectStructureToJSON();"},
+            "result": None,
+            "status": "pending"
+        }
+        
+        timeout = 30
+        start_time = time.time()
+        result = None
+        while time.time() - start_time < timeout:
+            if call_id in PENDING_JS_CALLS and PENDING_JS_CALLS[call_id]["status"] == "completed":
+                result = PENDING_JS_CALLS[call_id]["result"]
+                del PENDING_JS_CALLS[call_id]
+                break
+            await asyncio.sleep(0.5)
+            
+        if call_id in PENDING_JS_CALLS:
+            del PENDING_JS_CALLS[call_id]
+        print(result)
+        if result is None: 
+            return "Error: Timed out waiting for JavaScript function to execute."
         
         
-        
-    # 5. On ajoute les metadatas si demandé au result final
-    if include_metadata:
-        # Recharger la base de données car elle a pu être mise à jour
-        with open(path_clip_db, 'r', encoding='utf-8') as f:
-            clip_db_updated = json.load(f)
-        
-        metadata_map = {item['mediaPath']: item for item in clip_db_updated}
+        # 2. Enregistrement du projet (on peut écraser sans soucis)
+        base_path = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot"
+        Path(base_path).mkdir(parents=True, exist_ok=True)
 
-        def add_metadata_to_project_structure(item):
-            """Parcourt récursivement la structure du projet pour y ajouter les métadonnées."""
+        project_data = json.loads(result)
+        project_id = project_data.get("projectID", "")
+        file_path = base_path / f"{project_id}.json"
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(project_data, f, indent=2, ensure_ascii=False)
+
+
+
+        
+        
+        # 3. On récupère tous les paths des fichiers images et vidéos
+        def extract_media_paths(item, paths_list):
+            """Parcourt récursivement un élément et extrait tous les paths des médias vidéo et image"""
             if isinstance(item, dict):
+                # Vérifier si l'élément actuel est une vidéo ou une image
                 item_type = item.get('type', '')
                 if item_type in ['Video', 'Image'] and 'mediaPath' in item:
                     media_path = item['mediaPath']
-                    if media_path in metadata_map:
-                        # On ne garde que les clés de métadonnées pertinentes
-                        meta = metadata_map[media_path]
-                        item['metadata'] = {
-                            "description": meta.get("description"),
-                            "camera_angle": meta.get("camera_angle"),
-                            "colors": meta.get("colors"),
-                            "people": meta.get("people")
-                        }
+                    if media_path and media_path != "N/A":
+                        paths_list.append({
+                            'name': item.get('name', ''),
+                            'type': item_type,
+                            'path': media_path,
+                            'nodeId': item.get('nodeId', '')
+                        })
                 
+                # Parcourir récursivement les enfants s'ils existent
                 if 'children' in item and isinstance(item['children'], list):
                     for child in item['children']:
-                        add_metadata_to_project_structure(child)
+                        extract_media_paths(child, paths_list)
             elif isinstance(item, list):
-                for sub_item in item:
-                    add_metadata_to_project_structure(sub_item)
-
-        add_metadata_to_project_structure(project_data)
+                # Si c'est une liste, parcourir chaque élément
+                for child in item:
+                    extract_media_paths(child, paths_list)
         
-        # Le résultat final est la structure du projet mise à jour et convertie en JSON
-        final_result = json.dumps(project_data, indent=2, ensure_ascii=False)
-    else:
-        # Sinon, on retourne le JSON original
+        media_paths = []
+        extract_media_paths(project_data, media_paths)
+        # print(f"Trouvé {len(media_paths)} fichiers média (Video/Image)")
+
+        
+        
+        
+        # 4. On cherche les metadatas de ces fichiers médias, sinon on appelle le tool labelizer
+        path_clip_db = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot" / "index.json"
+        
+        # Créer le fichier index.json s'il n'existe pas
+        if not path_clip_db.exists():
+            path_clip_db.parent.mkdir(parents=True, exist_ok=True)
+            with open(path_clip_db, 'w', encoding='utf-8') as f:
+                json.dump([], f, indent=2, ensure_ascii=False)
+            print(f"Fichier index.json créé : {path_clip_db}")
+        
+        # Charger la base de données des rushs
+        with open(path_clip_db, 'r', encoding='utf-8') as f:
+            clip_db = json.load(f)
+
+        existing_paths_in_db = {item['mediaPath'] for item in clip_db}
+
+        missing_media = []
+        for media in media_paths:
+            media_path = media['path']
+
+            if media_path not in existing_paths_in_db:
+                missing_media.append(media_path)
+
+        # if missing_media and include_metadata and not skip_labelize:
+        #     print(f"\nRésumé : {len(missing_media)} fichiers nécessitent une analyse des métadonnées")
+        #     await main_fast_labelize(missing_media)
+            
+            
+            
+        # 5. On ajoute les metadatas si demandé au result final
+        # if include_metadata:
+        #     # Recharger la base de données car elle a pu être mise à jour
+        #     with open(path_clip_db, 'r', encoding='utf-8') as f:
+        #         clip_db_updated = json.load(f)
+            
+        #     metadata_map = {item['mediaPath']: item for item in clip_db_updated}
+
+        #     def add_metadata_to_project_structure(item):
+        #         """Parcourt récursivement la structure du projet pour y ajouter les métadonnées."""
+        #         if isinstance(item, dict):
+        #             item_type = item.get('type', '')
+        #             if item_type in ['Video', 'Image'] and 'mediaPath' in item:
+        #                 media_path = item['mediaPath']
+        #                 if media_path in metadata_map:
+        #                     # On ne garde que les clés de métadonnées pertinentes
+        #                     meta = metadata_map[media_path]
+        #                     item['metadata'] = {
+        #                         "description": meta.get("description"),
+        #                         "camera_angle": meta.get("camera_angle"),
+        #                         "colors": meta.get("colors"),
+        #                         "people": meta.get("people")
+        #                     }
+                    
+        #             if 'children' in item and isinstance(item['children'], list):
+        #                 for child in item['children']:
+        #                     add_metadata_to_project_structure(child)
+        #         elif isinstance(item, list):
+        #             for sub_item in item:
+        #                 add_metadata_to_project_structure(sub_item)
+
+        #     add_metadata_to_project_structure(project_data)
+            
+            # Le résultat final est la structure du projet mise à jour et convertie en JSON
+        #     final_result = json.dumps(project_data, indent=2, ensure_ascii=False)
+        # else:
+        #     # Sinon, on retourne le JSON original
         final_result = result
 
-    
-    config.API_STATUS = "Thinking..."
-    
-    return final_result
+        
+        config.API_STATUS = "Thinking..."
+        
+        return final_result
+    except Exception as e:
+        print(f"Erreur get_project_structure: {str(e)}")
+        return "Error: " + str(e)
 
 async def get_project_context(prompt: str, include_metadata: bool = False):
     
