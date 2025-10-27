@@ -14,3 +14,4 @@ pyinstaller==6.13.0
 librosa==0.11.0
 pandas==2.3.1
 langgraph==0.6.7
+langchain==0.3.27
