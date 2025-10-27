@@ -1,4 +1,4 @@
-#include "json2.js"
+#include "json2.js";
 
 $._MYFUNCTIONS ={}
 
@@ -373,83 +373,6 @@ $._MYFUNCTIONS.getImportPath = function() {
     return JSON.stringify(videoPaths);
 
 }
-
-// DeepResearch    -------------------------------------------------------------------------------
-
-// $._MYFUNCTIONS.importIntoDeepResearch = function(input) {
-
-//     var folderName = "DeepResearch Import";
-//     var root = app.project.rootItem;
-//     var targetBin = null;
-
-//     // 1. Cherche ou crée le chutier "DeepResearch Import"
-//     for (var i = 0; i < root.children.numItems; i++) {
-//         var child = root.children[i];
-//         if (child && child.name === folderName && child.type === ProjectItemType.BIN) {
-//             targetBin = child;
-//             break;
-//         }
-//     }
-//     if (targetBin === null) {
-//         targetBin = root.createBin(folderName);
-//     }
-
-//     var filePaths = JSON.parse(input);
-
-//     // 3. Importation dans le chutier cible
-//     var importedItems = [];
-
-//     for (var j = 0; j < filePaths.length; j++) {
-//         var filePath = filePaths[j];
-//         var file = new File(filePath);
-
-//         if (file.exists) {
-//             var beforeCount = targetBin.children.numItems;
-
-//             app.project.importFiles(
-//                 [file.fsName],
-//                 false, // suppressUI
-//                 targetBin,
-//                 false  // importAsNumberedStills
-//             );
-
-//             var afterCount = targetBin.children.numItems;
-
-//             if (afterCount > beforeCount) {
-//                 var newItem = targetBin.children[afterCount - 1];
-//                 importedItems.push(newItem);
-//             }
-//         } else {
-//             $.writeln("Fichier introuvable : " + filePath);
-//         }
-//     }
-
-//     // 4. Ajout à la fin de la séquence active
-//     if (importedItems.length > 0 && app.project.activeSequence) {
-//         var seq = app.project.activeSequence;
-//         var videoTrack = seq.videoTracks[0]; // on place sur V1
-
-//         // On récupère le temps de fin max actuel
-//         var endTime = 0.0;
-//         for (var t = 0; t < videoTrack.clips.numItems; t++) {
-//             var clip = videoTrack.clips[t];
-//             var thisEnd = clip.start.seconds + clip.duration.seconds;
-//             if (thisEnd > endTime) {
-//                 endTime = thisEnd;
-//             }
-//         }
-
-//         for (var k = 0; k < importedItems.length; k++) {
-//             var projectItem = importedItems[k];
-//             if (projectItem && projectItem.type === ProjectItemType.CLIP) {
-//                 videoTrack.insertClip(projectItem, endTime);
-//                 endTime += projectItem.getOutPoint().seconds; // on empile proprement
-//             }
-//         }
-//     } else {
-//         Alert("Aucune séquence active ou aucun rush importé.");
-//     }
-// }
 
 
 // Video Generation    ----------------------------------------------------------------------------
@@ -1910,94 +1833,27 @@ $._MYFUNCTIONS.isTrackClearAtTime = function(track, startTimeInSeconds, endTimeI
     return true; 
 }
 
-// $._MYFUNCTIONS.importImageToImageGenerationBin_V2= function(imagePath) {
-//     $._MYFUNCTIONS.ensure_minimum_empty_tracks(1 , false, true) 
-//     $._MYFUNCTIONS.ensure_minimum_empty_tracks(1 , true, false) 
-
-//     if (!imagePath || !(new File(imagePath)).exists) {
-//         // alert("Le chemin de l'image est invalide ou le fichier n'existe pas.");
-//         return null;
-//     }
-
-//     var project = app.project;
-
-    
-//     var rootItem = project.rootItem;
-//     var targetBin = null;
-
-//     // --- 1. RECHERCHE OU CRÉATION DU CHUTIER (BIN) ---
-//     for (var i = 0; i < rootItem.children.numItems; i++) {
-//         var item = rootItem.children[i];
-//         if (item && item.type === ProjectItemType.BIN && item.name === "Generative AI") {
-//             targetBin = item;
-//             break;
-//         }
-//     }
-
-//     if (!targetBin) {
-//         targetBin = rootItem.createBin("Generative AI");
-//     }
-
-//     // --- 2. IMPORTATION DU FICHIER ---
-//     var success = project.importFiles(
-//         [imagePath],
-//         false,
-//         targetBin,
-//         false
-//     );
-
-
-//     // --- 3. RÉCUPÉRATION DE L'ITEM IMPORTÉ ---
-//     var importedItem = targetBin.children[targetBin.children.numItems - 1];
-
-
-//     // --- 4. INSERTION SUR UNE PISTE VIDÉO VIDE ---
-//     var sequence = project.activeSequence;
-
-
-//     var playheadTime = sequence.getPlayerPosition();
-//     var imageDuration = 5.0; // Durée par défaut de 5 secondes si non fournie.
-//     var endTimeSeconds = playheadTime.seconds + imageDuration;
-    
-//     var targetTrack = null;
-
-//     // On parcourt les pistes vidéo pour en trouver une de libre
-//     for (var i = 0; i < sequence.videoTracks.numTracks; i++) {
-//         var currentTrack = sequence.videoTracks[i];
-//         if ($._MYFUNCTIONS.isTrackClearAtTime(currentTrack, playheadTime.seconds, endTimeSeconds)) {
-//             targetTrack = currentTrack;
-//             break; // On a trouvé une piste libre, on arrête la recherche.
-//         }
-//     }
-
-//     if (targetTrack) {
-//         // On insère le clip en mode "Overwrite" (Écrasement)
-//         var newClip = targetTrack.overwriteClip(importedItem, playheadTime.seconds);
-        
-//         if (newClip) {
-//             // On ajuste la durée du clip sur la timeline pour qu'elle corresponde à la durée souhaitée
-//             var newEndTime = new Time();
-//             newEndTime.seconds = playheadTime.seconds + imageDuration;
-//             newClip.end = newEndTime;
-
-//             // alert("Image insérée avec succès !");
-//             return newClip;
-//         }
-//     } 
-// }
-
 $._MYFUNCTIONS.importAndPlaceMedia = function(filePath) {
+
+    
     // S'assure qu'il y a au moins une piste vide de chaque type pour éviter les erreurs
     // Note: vous devez avoir une fonction ensure_minimum_empty_tracks définie ailleurs.
     $._MYFUNCTIONS.ensure_minimum_empty_tracks(1, false, true); // Pour l'audio
     $._MYFUNCTIONS.ensure_minimum_empty_tracks(1, true, false); // Pour la vidéo
 
     if (!filePath || !(new File(filePath)).exists) {
+        alert("DEBUG: File does not exist or invalid path");
         return null;
     }
 
     var project = app.project;
     var sequence = project.activeSequence;
+    
+    if (!sequence) {
+        alert("DEBUG: No active sequence found");
+        return null;
+    }
+
 
 
     // --- 1. GESTION DU CHUTIER ---
@@ -2017,11 +1873,26 @@ $._MYFUNCTIONS.importAndPlaceMedia = function(filePath) {
     // --- 2. IMPORTATION ---
     project.importFiles([filePath], false, targetBin, false);
     var importedItem = targetBin.children[targetBin.children.numItems - 1];
+    
+    if (!importedItem) {
+        alert("DEBUG: Failed to import file");
+        return null;
+    }
+
 
 
     // --- 3. DÉTECTION DU TYPE PAR EXTENSION ---
     var mediaPath = importedItem.getMediaPath();
     var extension = mediaPath ? mediaPath.substr(mediaPath.lastIndexOf('.') + 1).toLowerCase() : '';
+
+    if (!mediaPath) {
+        alert("DEBUG: Failed to get media path");
+        return null;
+    }
+    if (!extension) {
+        alert("DEBUG: Failed to get extension");
+        return null;
+    }
 
     var videoExtensions = ["mov", "mp4", "avi", "mpg", "mpeg", "mxf", "mkv", "webm"];
     var imageExtensions = ["png", "jpg", "jpeg", "tiff", "psd", "gif", "bmp", "tga"];
@@ -2034,6 +1905,8 @@ $._MYFUNCTIONS.importAndPlaceMedia = function(filePath) {
     // --- 4. LOGIQUE D'INSERTION SPÉCIFIQUE ---
     var playheadTime = sequence.getPlayerPosition();
     var result = { videoClip: null, audioClip: null };
+
+    
 
     if (isVideo) {
         // --- CAS VIDÉO : DOIT TROUVER UNE PAIRE DE PISTES LIBRES (VIDÉO + AUDIO) ---
@@ -3182,117 +3055,6 @@ $._MYFUNCTIONS.addMarker = function(args) {
         return false;
     }
 }
-
-// $._MYFUNCTIONS.insertItem = function(args) {
-//     if (!args || !args.nodeId) {
-//         alert("Le nodeId de l'item est requis pour l'insertion.");
-//         return false;
-//     }
-
-//     try {
-//         var activeSequence = app.project.activeSequence;
-//         if (!activeSequence) {
-//             alert("Aucune séquence active.");
-//             return false;
-//         }
-
-//         // 1. Trouver le clip source dans le projet
-//         var sourceClip = $._MYFUNCTIONS.findProjectItemByNodeId(args.nodeId, app.project.rootItem);
-//         if (!sourceClip) {
-//             alert("Impossible de trouver l'item avec nodeId : " + args.nodeId);
-//             return false;
-//         }
-
-//         // 2. Déterminer la position de départ
-//         var startTime = args.start !== undefined ? args.start : activeSequence.end.seconds;
-
-//         // 3. Récupérer les points in/out du média source
-//         var sourceIn = sourceClip.getInPoint().seconds;
-//         var sourceOut = sourceClip.getOutPoint().seconds;
-//         var sourceDuration = sourceOut - sourceIn;
-
-//         // 4. Déterminer la durée cible
-//         var targetDuration;
-//         if (args.end !== undefined) {
-//             // Si end est fourni, calculer la durée
-//             targetDuration = args.end - startTime;
-//         } else {
-//             // Sinon, utiliser toute la durée du média source
-//             targetDuration = sourceDuration;
-//         }
-
-//         // 5. Calculer les nouveaux points in/out pour respecter la durée cible
-//         var newIn, newOut;
-        
-//         if (targetDuration >= sourceDuration) {
-//             // Si la durée demandée >= durée source, utiliser tout le média
-//             newIn = sourceIn;
-//             newOut = sourceOut;
-//         } else {
-//             // Sinon, prendre une portion centrée du média
-//             var sourceMiddle = sourceIn + (sourceDuration / 2);
-//             newIn = sourceMiddle - (targetDuration / 2);
-//             newOut = sourceMiddle + (targetDuration / 2);
-
-//             // Ajuster si on dépasse les limites
-//             if (newIn < sourceIn) {
-//                 newIn = sourceIn;
-//                 newOut = sourceIn + targetDuration;
-//             }
-//             if (newOut > sourceOut) {
-//                 newOut = sourceOut;
-//                 newIn = sourceOut - targetDuration;
-//             }
-//         }
-
-//         // 6. Appliquer les points in/out
-//         sourceClip.setInPoint(newIn, 4);  // 4 = audio + vidéo
-//         sourceClip.setOutPoint(newOut, 4);
-
-//         // 7. Déterminer la piste de destination
-//         var videoTrackIndex = 0;
-//         var audioTrackIndex = 0;
-
-//         if (args.track) {
-//             // Parser le format "video 1" ou "audio 1"
-//             var trackParts = args.track.split(' ');
-//             if (trackParts.length === 2) {
-//                 var trackNumber = parseInt(trackParts[1]) - 1; // Convertir en index (base 0)
-//                 if (trackParts[0].toLowerCase() === 'video') {
-//                     videoTrackIndex = trackNumber;
-//                 } else if (trackParts[0].toLowerCase() === 'audio') {
-//                     audioTrackIndex = trackNumber;
-//                 }
-//             }
-//         } else {
-//             // Utiliser getFirstFreeTracks pour trouver une piste libre
-//             var freeTracks = $._MYFUNCTIONS.getFirstFreeTracks(startTime, startTime + (newOut - newIn));
-//             videoTrackIndex = freeTracks.videoTrackIndex !== -1 ? freeTracks.videoTrackIndex : 0;
-//             audioTrackIndex = freeTracks.audioTrackIndex !== -1 ? freeTracks.audioTrackIndex : 0;
-//         }
-
-//         // 8. Insérer le clip dans la timeline
-//         if (args.ripple) {
-//             // Insert avec ripple
-//             activeSequence.insertClip(sourceClip, startTime, videoTrackIndex, audioTrackIndex);
-//             $.writeln("Clip '" + sourceClip.name + "' inséré avec ripple à " + startTime + "s");
-//         } else {
-//             // Overwrite sans ripple
-//             activeSequence.overwriteClip(sourceClip, startTime, videoTrackIndex, audioTrackIndex);
-//             $.writeln("Clip '" + sourceClip.name + "' inséré en overwrite à " + startTime + "s");
-//         }
-
-//         // 9. Restaurer les points in/out originaux
-//         sourceClip.setInPoint(sourceIn, 4);
-//         sourceClip.setOutPoint(sourceOut, 4);
-
-//         return true;
-
-//     } catch (e) {
-//         alert("Erreur lors de l'insertion du clip : " + e.toString());
-//         return false;
-//     }
-// }
 
 $._MYFUNCTIONS.isTrackClearAtTime = function(track, startTimeSec, endTimeSec) {
     if (!track) { return false; }
