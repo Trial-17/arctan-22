@@ -1,6 +1,5 @@
 import json
 import base64
-import json
 import copy
 import requests
 import difflib
@@ -449,35 +448,63 @@ def main_smart_srt(audio_path, token, model="gpt-4.1-nano", user_prompt= "", max
     return output_path
 
 
-
-
-
 def find_passages(segments_list, prompt , model, token):
 
-    # model = "gemini-2.5-flash-preview-04-17"  
-    # model = "gemini-2.5-pro-preview-05-06"  
 
-    prompt = f"""
-
-    ### Instructions:
-    - You are an expert assistant for finding passages in a transcription.
-    - You are given a transcription and a user request.
-    - You need to return the passages in the transcription that are relevant to the user request.
-
-    ### User request to find passages :
+    if model == "pro":
+        model = "gemini-2.5-flash"
+    else: model = "gemini-2.5-flash-lite"
+    
+    user_prompt = f"""
+    ### USER REQUEST:
     {prompt}
     
-    ### Transcription to use :
+    ### TRANSCRIPTION:
     {segments_list}
         """.strip()
+    
+    system_instruction = """
+        
+            You are an expert assistant for finding passages in a transcription.
+            You need to return the timecode in the transcription that are relevant to the user request.
+            
+            ### RULES:
+            - always return the rigth number of passages asked by the user
+            - if you choose a passages on more than one segment, return the timecode of the first segment only
+            - in the comment, explain why you choose this passage
+            - the timecode format is in seconds
+
+    """
+    
+    # Structured output schema pour les passages
+    structured_output = {
+        "type": "OBJECT",
+        "properties": {
+            "passages": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "time_start": {"type": "NUMBER"},
+                        "comment": {"type": "STRING"}
+                    },
+                    "required": ["time_start", "comment"]
+                }
+            }
+        },
+        "required": ["passages"]
+    }
         
     try:
         response = requests.post(
-            f"{config.API_URL}/global-gemini-call",
-            json={"prompt": prompt,
-                  "model": model,
-                  "schema_type" : "audio_search"
-                  },
+            f"{config.API_URL}/gemini-call",
+            json={
+                "prompt": user_prompt,
+                "system_instruction": system_instruction,
+                "model": model,
+                "structured_output": structured_output,
+                "temperature": 0.5
+            },
             headers={"Authorization": f"Bearer {token}"}
         )
         
@@ -485,7 +512,7 @@ def find_passages(segments_list, prompt , model, token):
             print(f"Erreur lors de l'amélioration du prompt: {response.status_code}")
             return []
             
-        return response.json()["passages"]
+        return response.json()["result"]["passages"]
     except Exception as e:
         print(f"Erreur lors de l'appel à l'API d'amélioration de prompt: {str(e)}")
         return []
@@ -554,7 +581,7 @@ def creer_srt_depuis_lignes_passages(
     # with open(nom_fichier, 'w', encoding='utf-8') as f:
     #     f.write("\n".join(srt_content))
     return srt_content
- 
+
 def groc_transcription_passages(audio_path, token):
 
     def encode_audio_base64(audio_path):
@@ -591,61 +618,119 @@ def groc_transcription_passages(audio_path, token):
 
     return transcription
  
-def main_find_passages(audio_path, token, model="gemini-2.5-pro-preview-05-06", user_prompt= "", max_caracteres = 120, seuil = 0.15, lignes_max_par_srt = 2, ponctuation_force_solo=True ):
-    # 0. Transcription de l'audio
+ 
+ 
+def nettoyer_transcription(transcription):
+    """
+    Nettoie la transcription en supprimant les champs inutiles selon les spécifications :
+    - Supprime : text, task, language, duration, x_groq
+    - Garde : words tel quel
+    - Dans segments : supprime seek, tokens, temperature, avg_logprob, compression_ratio, no_speech_prob
+    """
+    # Créer une copie pour ne pas modifier l'original
+    transcription_nettoyee = copy.deepcopy(transcription)
+    
+    # Supprimer les champs au niveau racine
+    champs_a_supprimer_racine = ['text', 'task', 'language', 'duration', 'x_groq']
+    for champ in champs_a_supprimer_racine:
+        if champ in transcription_nettoyee:
+            del transcription_nettoyee[champ]
+    
+    # Nettoyer les segments
+    if 'segments' in transcription_nettoyee:
+        champs_a_supprimer_segments = ['seek', 'tokens', 'temperature', 'avg_logprob', 'compression_ratio', 'no_speech_prob']
+        for segment in transcription_nettoyee['segments']:
+            for champ in champs_a_supprimer_segments:
+                if champ in segment:
+                    del segment[champ]
+    
+    return transcription_nettoyee
+
+def main_transcription_for_agent(audio_path, token):
     config.API_STATUS = "Transcribing"
     transcription = groc_transcription_passages(audio_path, token)
-    transcription_segments = Get_Segments(transcription)
-    transcription_segments = Set_Majuscule(transcription_segments)
+    transcription_nettoyee = nettoyer_transcription(transcription)
+    return transcription_nettoyee
+ 
+ 
+def main_find_passages(audio_path, token, model="flash", user_prompt= "", max_caracteres = 120, seuil = 0.15, lignes_max_par_srt = 2, ponctuation_force_solo=True ):
+    # 0. Transcription de l'audio
+    config.API_STATUS = "Transcribing..."
+    transcription = groc_transcription_passages(audio_path, token)
+    
+    # Nettoyer la transcription : garder seulement les segments avec start, end, text
+    if 'segments' in transcription:
+        transcription_nettoyee = {
+            'segments': [
+                {
+                    'start': segment['start'],
+                    'end': segment['end'],
+                    'text': segment['text']
+                }
+                for segment in transcription['segments']
+            ]
+        }
+    else:
+        transcription_nettoyee = transcription
+    
+    # print(transcription_nettoyee)
+    # print("="*100)
 
+    return find_passages(transcription_nettoyee, user_prompt, model, token)
+    # transcription_segments = Get_Segments(transcription)
+    # transcription_segments = Set_Majuscule(transcription_segments)
 
-    # 1. faire des batch des 10 segments
-    transcription_segments_batch = []
-    batch = []
-    for segment in transcription_segments:
-        batch.append(segment)
-        if len(batch) == 10:
-            transcription_segments_batch.append(batch)
-            batch = []
-    if batch:
-        transcription_segments_batch.append(batch)
+    # print(transcription_segments)
+    # print("="*100)
+    # print(transcription)
+    # print("="*100)
+    # # 1. faire des batch des 10 segments
+    # transcription_segments_batch = []
+    # batch = []
+    # for segment in transcription_segments:
+    #     batch.append(segment)
+    #     if len(batch) == 10:
+    #         transcription_segments_batch.append(batch)
+    #         batch = []
+    # if batch:
+    #     transcription_segments_batch.append(batch)
 
         
-    #3. Regrouper les batchs corrigés
-    transcription_segments_corrected = []
-    for batch in transcription_segments_batch:
-        transcription_segments_corrected.extend(batch)
+    # #3. Regrouper les batchs corrigés
+    # transcription_segments_corrected = []
+    # for batch in transcription_segments_batch:
+    #     transcription_segments_corrected.extend(batch)
 
 
-    #4. Si un batch est juste un mot avec une virgule, le rattacher au suivant
-    config.API_STATUS = "Checking Punctuation"
-    for i in range(len(transcription_segments_corrected) - 2):
+    # #4. Si un batch est juste un mot avec une virgule, le rattacher au suivant
+    # config.API_STATUS = "Checking Punctuation"
+    # for i in range(len(transcription_segments_corrected) - 2):
         
-        current_segment = transcription_segments_corrected[i]
-        try :
-            next_segment = transcription_segments_corrected[i + 1]
-        except IndexError:
-            break
-        if len(current_segment) == 1 and current_segment[0]['word'][-1] == ',':
-            transcription_segments_corrected[i+1].insert(0, current_segment[0])
-            transcription_segments_corrected.pop(i)
+    #     current_segment = transcription_segments_corrected[i]
+    #     try :
+    #         next_segment = transcription_segments_corrected[i + 1]
+    #     except IndexError:
+    #         break
+    #     if len(current_segment) == 1 and current_segment[0]['word'][-1] == ',':
+    #         transcription_segments_corrected[i+1].insert(0, current_segment[0])
+    #         transcription_segments_corrected.pop(i)
 
 
-    #5. Séparation en bloc de bonne taille
-    transcription_segments_1 = []
-    for segment, i in zip(transcription_segments_corrected, range(len(transcription_segments_corrected))):
-        segments_splited = decouper_segment_intelligent(segment, max_caracteres)
-        transcription_segments_1.extend(segments_splited)
+    # #5. Séparation en bloc de bonne taille
+    # transcription_segments_1 = []
+    # for segment, i in zip(transcription_segments_corrected, range(len(transcription_segments_corrected))):
+    #     segments_splited = decouper_segment_intelligent(segment, max_caracteres)
+    #     transcription_segments_1.extend(segments_splited)
 
 
-    # 7. Export des SRT
-    segments_srt = creer_srt_depuis_lignes_passages(
-        transcription_segments_1,
-        lignes_max_par_srt,
-        ponctuation_force_solo
-    )
-
-    return find_passages(segments_srt, user_prompt, model, token)
+    # # 7. Export des SRT
+    # segments_srt = creer_srt_depuis_lignes_passages(
+    #     transcription_segments_1,
+    #     lignes_max_par_srt,
+    #     ponctuation_force_solo
+    # )
+    # print(segments_srt)
+    # return find_passages(segments_srt, user_prompt, model, token)
 
 
 

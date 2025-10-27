@@ -42,7 +42,37 @@
         }
     </script>
 	<style>
-
+        .creditCounterContent {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .creditCounterAmount,
+        .creditCostAmount {
+            font-size: 12px;
+            color: #fff;
+            text-align: left;
+            line-height: 1.2;
+        }
+        
+        .creditCostAmount {
+            opacity: 0.9;
+        }
+        
+        .cost-label {
+            margin-right: 4px;
+            opacity: 0.8;
+        }
+        
+        #generationCostValue {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        #imageGenerationCreditValue {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -56,121 +86,123 @@
 
 			<!-- Chat Interface -->
             <div id="chatInterface">
+                <!-- Titre de l'application en arrière-plan -->
+                <div id="appTitleBackground">
+                    <span class="app-title-premiere">Premiere GPT</span>
+                    <span class="app-title-version">Beta v2.0</span>
+                </div>
 
                 <div id="messageContainer" data-messages-container="true"></div>
                   <!-- Conteneur des messages -->
-                <div id="suggestionsWrapper">
-                    <div id="suggestionsContainer">
-                        <div class="suggestionBox">
-                            <h3 class="defaultText">Sequence</h3>
-                            <p class="defaultText">"Create a sequence for YouTube"</p>
-                            <p class="defaultText">"Create a new version V2"</p>
-
-                        </div>
-                        <div class="suggestionBox">
-                            <h3 class="defaultText">Edit</h3>
-                            <p class="defaultText">"Add zoom", "Add Morph Cut"</p>
-                            <p class="defaultText">"Switch this edit to vertical"</p>
-
-                        </div>
-                        <div class="suggestionBox">
-                            <h3 class="defaultText">Export</h3>
-                            <p class="defaultText">"Export my selected clips"</p>
-                            <p class="defaultText">"Export my sequence for YT, Insta"</p>
-
-                        </div>
-                        <div class="suggestionBox">
-                            <h3 class="defaultText">Research</h3>
-                            <p class="defaultText">"Find 3 moments for reels"</p>
-                            <p class="defaultText">"Find the moment where..."</p>
-
-                        </div>
-                    </div>
-                    <p id="back_text">Premiere GPT <span class="version-beta">Beta V1.5</span></p>
-                </div>
 
                 <!-- ✅ Interface Image Generation (cachée par défaut) -->
                 <div id="imageGenerationInterface">
                     <div id="imageGenerationContainer">
-                        <div id="framesContainer">
-                            <!-- Colonne gauche - Frame de départ (2/3) -->
-                            <div class="frameBox">
-                                <div class="frameContent">
-                                    <div class="imageContainer"></div>
-                                    <span class="frameText">Start Frame</span>
-                                    <div class="iconsContainer">
-                                        <img src="assets/uploadImage.png" alt="Upload" class="frameIcon" data-frame="start">
-                                        <img src="assets/extract.png" alt="Extract" class="frameIcon">
-                                    </div>
-                                    <button class="deleteImageButton" style="display: none;">
-                                        <img src="assets/close.png" alt="Supprimer">
+                        <!-- Colonne gauche - Frame de départ -->
+                        <div class="frameBox">
+                            <div class="frameContent">
+                                <div class="imageContainer"></div>
+                                <span class="frameText" style="display: none;">INPUT</span>
+                                
+                                <!-- Suggestions initiales -->
+                                <div class="suggestions-container" id="suggestionsContainer">
+                                    <button class="suggestion-item" data-preset-id="remove-video-background">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">remove video background</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="remove-image-background">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">remove image background</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="add-vfx">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">add VFX to video</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="png-output">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">generate PNG with transparent background</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="raw-image">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">generate a raw image</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="generative-fill">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">use generative fill</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="upscaling">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">upscale video quality</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="clone-any-voice">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">clone any voice</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="generate-speech">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">Generate speech</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="demix-music">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">Demix music in stems</span>
+                                    </button>
+                                    <button class="suggestion-item" data-preset-id="add-sound-design">
+                                        <span class="suggestion-arrow">→</span>
+                                        <span class="suggestion-text">Add sound design to video or image</span>
+                                    </button>
+                                </div>                                
+                                <div class="import-buttons-container" id="importButtonsContainer" style="display: none;">
+                                    <button class="import-button" id="importFromFilesBtn">
+                                        <span>Import from Files</span>
+                                    </button>
+                                    <button class="import-button" id="importFromPlayheadBtn">
+                                        <span>Import from Playhead</span>
                                     </button>
                                 </div>
-                            </div>
-                            
-                            <!-- Colonne droite - Contrôles (1/3) -->
-                            <div class="controlsColumn">
-                                <!-- Box unique pour tous les contrôles -->
-                                <div class="optionsBox">
-                                    <!-- Bouton Generate Video en haut -->
-                                    <button class="actionButton generateVideo">
-                                        <span class="buttonText">Generate Video</span>
-                                    </button>
-                                    
-                                    <!-- Bouton Generate Image -->
-                                    <button class="actionButton generateImage">
-                                        <span class="buttonText">Generate Image</span>
-                                    </button>
-                                    
-                                    <!-- Bouton Generative Fill -->
-                                    <button class="actionButton generativeFill">
-                                        <span class="buttonText">Generative Fill</span>
-                                    </button>
-                                    
-                                    <!-- Compteur de crédits -->
-                                    <div class="creditCounterContainer">
-                                        <div class="creditCounterIcon">
-                                            <img src="assets/credit.png" alt="Credits" />
-                                        </div>
-                                        <div class="creditCounterAmount">
-                                            <span id="imageGenerationCreditValue">1000</span> credits available
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Options de ratio et type -->
-                                    <div class="optionRowDouble">
-                                        <div class="optionCol optionColHorizontal">
-                                            <div class="panel-param-title"><img src="assets/aspectratio.png" class="panel-title-icon-img" alt="Aspect Ratio Icon">Aspect Ratio</div>
-                                            <select id="aspectRatioSelect" class="unified-select">
-                                                <option value="1280:720">1280:720</option>
-                                                <option value="720:1280">720:1280</option>
-                                                <option value="1104:832">1104:832</option>
-                                                <option value="832:1104">832:1104</option>
-                                                <option value="960:960">960:960</option>
-                                                <option value="1584:672">1584:672</option>
-                                            </select>
-                                        </div>
-                                        <div class="optionCol optionColHorizontal">
-                                            <div class="panel-param-title"><img src="assets/type.png" class="panel-title-icon-img" alt="Type Icon">Type</div>
-                                            <select id="typeSelect" class="unified-select">
-                                                <option value="rush">Rush</option>
-                                                <option value="effect">Effect</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
+                                <button class="deleteImageButton" style="display: none;">
+                                    <img src="assets/close.png" alt="Supprimer">
+                                </button>
                             </div>
                         </div>
-
-                        <!-- Section de conseils -->
-                        <div class="documentation-section">
-                            <h3 class="panel-param-title"><img src="assets/documentation.png" class="panel-title-icon-img" alt="Documentation Icon">Documentation</h3>
-                            <ul class="documentation-list">
-                                <li class="documentation-item">Use specific and detailed descriptions for better results (up to 1K Char) </li>
-                                <li class="documentation-item">Detail Camera Motion, Camera angle, action, consequence of the action, element to animate </li>
-                                <li class="documentation-item">Copilot will auto enhance your prompt</li>
-                                <li class="documentation-item">A good start frame is 95% of the job, so iterate it</li>
-                            </ul>
+                        
+                        <!-- Colonne droite - Contrôles -->
+                        <div class="controlsColumn">
+                            <div class="main-controls-box">
+                                <!-- Bouton Generate avec coût -->
+                                <button class="actionButton btn-main green" id="generateBtn">
+                                    <span class="btn-text">Generate</span>
+                                    <span class="btn-cost" id="generateBtnCost" style="display: none;"></span>
+                                </button>
+                                
+                                <!-- Sélecteur de modèle personnalisé -->
+                                <div class="model-selector-container">
+                                    <div class="custom-model-selector">
+                                        <button class="model-selector-button" id="modelSelectorBtn">
+                                            <span class="selected-model-text">Select AI Model</span>
+                                            <span class="selector-arrow">▼</span>
+                                        </button>
+                                        <div class="model-dropdown" id="modelDropdown">
+                                            <div class="model-columns">
+                                                <div class="model-column" data-type="image">
+                                                    <div class="column-header">IMAGE</div>
+                                                    <div class="column-models" id="imageModels"></div>
+                                                </div>
+                                                <div class="model-column" data-type="video">
+                                                    <div class="column-header">VIDEO</div>
+                                                    <div class="column-models" id="videoModels"></div>
+                                                </div>
+                                                <div class="model-column" data-type="audio">
+                                                    <div class="column-header">AUDIO</div>
+                                                    <div class="column-models" id="audioModels"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Conteneur pour les paramètres qui seront injectés par le JS -->
+                                <div id="dynamicParametersContainer"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -332,93 +364,6 @@
                     </div>
                 </div>
 
-                <!-- ✅ Interface Auto Edit (cachée par défaut) -->
-                <div id="autoEditInterface">
-                    <div id="autoEditContainer">
-                        <div class="autoEdit_mainRow">
-                            <div class="autoEdit_boxWrapper">
-                                <div class="autoEdit_inputBox">
-                                    <div class="autoEdit_inputGroup">
-                                        <div class="autoEdit_paramRow">
-                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Input Folder</div>
-                                            <input type="text" id="folderName" placeholder="Entrez le nom du dossier">
-                                        </div>
-                                    </div>
-                                    <div class="suggestionsList" id="folderSuggestions"></div>
-                                    <div class="autoEdit_inputGroup">
-                                        <div class="autoEdit_paramRow">
-                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Chronologic</div>
-                                            <select class="unified-select">
-                                                <option value="no">no</option>
-                                                <option value="yes">yes</option>
-                                                <option value="mixed">mixed</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="autoEdit_inputGroup">
-                                        <div class="autoEdit_paramRow">
-                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Audio Type</div>
-                                            <select class="unified-select">
-                                                <option value="music">music</option>
-                                                <option value="speaker">speaker</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="autoEdit_inputGroup">
-                                        <div class="autoEdit_paramRow">
-                                            <div class="panel-param-title"><div class="panel-title-icon"></div>Model Choice</div>
-                                            <select class="unified-select" id="modeleChoice">
-                                                <option value="FLASH">Flash</option>
-                                                <option value="PRO">Pro</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="autoEdit_boxWrapper">
-                                <div class="autoEdit_inputBox">
-                                    <div class="autoEdit_inputGroup">
-                                        <button class="actionButton autoEdit" id="autoEdit">
-                                            <span class="buttonText">Auto Edit</span>
-                                        </button>
-                                    </div>
-                                    <div class="autoEdit_inputGroup">
-                                        <button class="actionButton audioAnalysis" id="audioAnalysis">
-                                            <span class="buttonText">Audio Analysis</span>
-                                        </button>
-                                    </div>
-                                    <div class="autoEdit_inputGroup">
-                                        <button class="actionButton fastEdit" id="fastEdit">
-                                            <span class="buttonText">Fast Edit</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="documentation-section">
-                            <h3 class="panel-param-title"><img src="assets/documentation.png" class="panel-title-icon-img" alt="Documentation Icon">Documentation</h3>
-                            <ul class="documentation-list">
-                                <li class="documentation-item">Auto Edit : based on your prompt, perform a V0 edit with audi track and Input folder</li>
-                                <li class="documentation-item">Audio Analysis : perform music beats analysis or will improve speach fluency</li>
-                                <li class="documentation-item">Speaker Mode : Improve the speach, start with audio video on track 0 at the origin</li>
-                                <li class="documentation-item">Audio Mode : beat detection, start with audio on track 0 at the origin</li>
-                                <li class="documentation-item">Fast Edit : synchronize selected clips on your timeline with beats markers on the audio clips</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ✅ Interface Script (cachée par défaut) -->
-                <div id="scriptInterface">
-                    <div id="scriptContainer">
-                        <div class="scriptsGrid" id="scriptsGrid">
-                            <!-- Les scripts seront ajoutés ici dynamiquement par JavaScript -->
-                        </div>
-                    </div>
-                </div>
-
                 <!-- ✅ Interface Tool (cachée par défaut) -->
                 <div id="toolInterface">
                     <div id="toolContainer">
@@ -515,67 +460,236 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Subtitles Pro Tool -->
+                        <div class="podcast_dynamicSection" id="subtitlesProBox">
+                            <div class="panel-param-title has-tooltip">
+                                <img src="assets/srt.png" class="panel-title-icon-img no-filter" alt="Subtitles Pro Icon">
+                                <span class="pro-feature">Subtitles Pro</span>
+                                <span class="info-tooltip info-tooltip-top">
+                                    <span class="tooltip-icon">i</span>
+                                    <ul class="tooltip-list">
+                                        <li>Generate a transcription quickly with the most powerful speech-to-text model, adding context.</li>
+                                        <li>Automatic spelling correction.</li>
+                                        <li>Intelligent SRT generation, respecting punctuation and syntax, and beautified.</li>
+                                        <li>The generated SRT is automatically imported into a bin in the project.</li>
+                                        <li>Production cost requires a subscription for access.</li>
+                                    </ul>
+                                </span>
+                            </div>
+
+                            <!-- Sliders -->
+                            <div class="podcast_advancedSettings" id="subtitlesProSliders">
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Max Caracteres
+                                        <span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Maximum number of characters per subtitle line. A small tolerance is admitted.</span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="maxCharsSlider" min="20" max="200" step="5" value="42">
+                                        <div class="value-container">
+                                            <input type="number" id="maxCharsValue" class="podcast_sliderValue" min="20" max="200" step="5" value="42">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="maxCharsValue" data-step="5">▲</button>
+                                                <button class="stepper-button" data-for="maxCharsValue" data-step="-5">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="podcast_sliderRow">
+                                    <div class="panel-param-title has-tooltip">Threshold
+                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Threshold in seconds where space between subtitles will be filled.</span>
+                                    </div>
+                                    <div class="podcast_sliderContainer">
+                                        <input type="range" id="thresholdSlider" min="0" max="2" step="0.05" value="0.2">
+                                        <div class="value-container">
+                                            <input type="number" id="thresholdValue" class="podcast_sliderValue" min="0" max="2" step="0.05" value="0.2">
+                                            <div class="stepper-buttons">
+                                                <button class="stepper-button" data-for="thresholdValue" data-step="0.05">▲</button>
+                                                <button class="stepper-button" data-for="thresholdValue" data-step="-0.05">▼</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Other Settings -->
+                            <div class="podcast_advancedSettings" id="subtitlesProSettings">
+                                <div class="tool-settings-row-triple">
+                                    <div class="setting-item">
+                                        <div class="panel-param-title has-tooltip">Model<span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Choose the AI model for spelling correction. GPT-5 is more advanced.</span></div>
+                                        <select id="subtitleModelSelect" class="unified-select">
+                                            <option value="gpt-5">gpt-5</option>
+                                            <option value="gpt-4.1">gpt-4.1</option>
+                                        </select>
+                                    </div>
+                                    <div class="setting-item">
+                                        <div class="panel-param-title has-tooltip">Double Line<span class="info-tooltip info-tooltip-top"><span class="tooltip-icon">i</span>Allow subtitles to span across two lines</span></div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="doubleLineSwitch" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="setting-item">
+                                        <div class="panel-param-title has-tooltip">Punctuation End<span class="info-tooltip info-tooltip-top"><span class="tooltip-icon">i</span>Ensure that each punctuation mark ends a subtitle line, if possible.</span></div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="punctuationSwitch" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Row -->
+                            <div class="tool-button-row" id="subtitlesProButtons">
+                                <button class="btn-main green" id="generateSubtitles" style="flex: 1;">
+                                    <span>Generate Subtitles</span>
+                                </button>
+                                <span class="tool-note" style="flex: 3;">Use the global prompt box to indicate the proper nouns or any others specifications</span>
+                            </div>
+                        </div>
+
+                        <!-- AudioResearch Tool -->
+                        <div class="podcast_dynamicSection" id="audioResearchBox">
+                            <div class="panel-param-title has-tooltip">
+                                <img src="assets/documentation.png" class="panel-title-icon-img" alt="AudioResearch Icon">
+                                <span class="pro-feature">AudioResearch</span>
+                                <span class="info-tooltip info-tooltip-top">
+                                    <span class="tooltip-icon">i</span>
+                                    <ul class="tooltip-list">
+                                        <li>Find or ask anything about your audio timeline with a connected LLM.</li>
+                                        <li>Production cost necessitates a subscription.</li>
+                                    </ul>
+                                </span>
+                            </div>
+
+                            <!-- Model Selection Row -->
+                            <div class="audio-research-setting-row">
+                                <div class="setting-item">
+                                    <div class="panel-param-title has-tooltip">Model<span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Choose the AI model for research. Pro is more powerful but slower.</span></div>
+                                    <select id="audioResearchModelSelect" class="unified-select">
+                                        <option value="flash">gemini-2.5-flash</option>
+                                        <option value="pro">gemini-2.5-pro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Prompt Bubbles -->
+                            <div class="prompt-bubbles-container">
+                                <div class="prompt-bubble">find 3 moments where...</div>
+                                <div class="prompt-bubble">the most viral moment ...</div>
+                                <div class="prompt-bubble">find this ...</div>
+                            </div>
+
+                            <!-- Action Row -->
+                            <div class="tool-settings-row-split">
+                                <div class="settings-left">
+                                    <button class="btn-main green" id="startResearch">
+                                        <span>Start Research</span>
+                                    </button>
+                                </div>
+                                <div class="settings-right">
+                                    <span class="tool-note">Fill the global prompt box for your research</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- TopIcons -->
                 <div id="topIcons" class="topIcons">
-                    <button class="topIcon" id="userButton">
-                        <img src="assets/user.png" alt="User" />
-                    </button>
-                    <button class="topIcon" id="plusButton">
-                        <img src="assets/plus.png" alt="Plus" />
-                    </button>
-                    <button class="topIcon" id="scriptButton">
-                        <img src="assets/script.png" alt="Script" />
-                        <span class="scriptIconText">Script</span>
-                    </button>
-                    <div id="scriptSearchContainer">
-                        <input type="text" id="scriptSearch" placeholder="Find a script..." />
-                        <button id="clearSearch">
-                            <img src="assets/close.png" alt="Clear" />
+                    <div id="topIconsWrapper">
+                        <button class="topIcon" id="userButton">
+                            <img src="assets/user.png" alt="User" />
                         </button>
+                        <button class="topIcon" id="plusButton">
+                            <img src="assets/plus.png" alt="Plus" />
+                        </button>
+                        <button class="topIcon" id="modelButton">
+                            <img src="assets/model.png" alt="Model" />
+                        </button>
+                        
+                        <!-- Model selection menu -->
+                        <div id="modelDropdownMenu" class="model-dropdown-menu" style="display: none;">
+                            <div class="model-option" data-model="fast">
+                                <div class="model-option-header">
+                                    <span class="model-option-name">Fast</span>
+                                    <span class="model-option-badge">Recommended</span>
+                                </div>
+                                <div class="model-option-description">
+                                    Best model for most of the tasks and faster
+                                </div>
+                            </div>
+                            <div class="model-option" data-model="pro">
+                                <div class="model-option-header">
+                                    <span class="model-option-name">Pro</span>
+                                    <span class="model-option-badge pro">Advanced</span>
+                                </div>
+                                <div class="model-option-description">
+                                    Slower but more accurate, designed for most complexe tasks
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
+                <!-- Recommandations flottantes -->
+                <div id="recommendationsContainer">
+                    <div class="recommendation-item">
+                        <img src="assets/trend.png" alt="Trend" class="recommendation-icon">
+                        <span class="recommendation-text">create a subfolder</span>
+                    </div>
+                    <div class="recommendation-item">
+                        <img src="assets/trend.png" alt="Trend" class="recommendation-icon">
+                        <span class="recommendation-text">add a new sequence in 4k 60fps</span>
+                    </div>
+                    <div class="recommendation-item">
+                        <img src="assets/trend.png" alt="Trend" class="recommendation-icon">
+                        <span class="recommendation-text">create a reel from this edit</span>
+                    </div>
+                </div>
+
                  <!-- Chatbox toujours visible en bas -->
                 <div id="chatBox">
-                    <!-- Zone de saisie en haut -->
-                    <div id="inputContainer">
-                        <textarea id="messageInput" placeholder="Message to Copilot"></textarea>
-                    </div>
-
-                    <!-- Barre d'actions en bas -->
-                    <div id="chatActions">
-                        <!-- Icônes à gauche -->
-                        <div id="leftIcons">
-                            <button class="chatIcon" id="podcastButton">
-                                <img src="assets/podcast.png" />
-                                <span class="chatIconText">Podcast</span>
-                            </button>
-                            <button class="chatIcon" id="imageGenerationButton">
-                                <img src="assets/atom.png"  />
-                                <span class="chatIconText">Image Generation</span>
-                            </button>
-                            <button class="chatIcon" id="toolButton">
-                                <img src="assets/edit.png"  />
-                                <span class="chatIconText">Tools</span>
-                            </button>
-                            <button class="chatIcon" id="autoEditButton">
-                                <img src="assets/autoEdit.png"  />
-                                <span class="chatIconText">Auto Edit</span>
-                            </button>
+                    <!-- Conteneur principal avec flexbox -->
+                    <div id="chatContent">
+                        <!-- Zone de saisie -->
+                        <div id="inputContainer">
+                            <textarea id="messageInput" placeholder="Message to Copilot" rows="1"></textarea>
                         </div>
+                        
+                        <!-- Barre d'actions alignée verticalement -->
+                        <div id="chatActions">
+                            <!-- Icônes à gauche -->
+                            <div id="leftIcons">
+                                <button class="chatIcon" id="podcastButton">
+                                    <img src="assets/podcast.png" />
+                                    <span class="chatIconText">Podcast</span>
+                                </button>
+                                <button class="chatIcon" id="imageGenerationButton">
+                                    <img src="assets/atom.png"  />
+                                    <span class="chatIconText">Generative AI</span>
+                                </button>
+                                <button class="chatIcon" id="toolButton">
+                                    <img src="assets/edit.png"  />
+                                    <span class="chatIconText">Tools</span>
+                                </button>
+                            </div>
 
-                        <div id="statusMessage">Réflexion</div>
+                            <div id="statusMessage">Réflexion</div>
 
-                        <button id="sendButton" class="sendButton">
-                            <img src="assets/send.png" alt="Send" />
-                        </button>
-
-                        <!-- Animation de chargement (cachée par défaut) -->
-                        <div id="loadingIndicator">
-                            <img src="assets/animation.gif" alt="Loading..." />
+                            <div id="rightActions">
+                                <button id="sendButton" class="sendButton">
+                                    <img src="assets/send.png" alt="Send" />
+                                </button>                               
+                                 <!-- Animation de chargement (cachée par défaut) -->
+                                <div id="loadingIndicator">
+                                    <img src="assets/animation.gif" alt="Loading..." />
+                                </div>
+                                <!-- Bouton stop (caché par défaut) -->
+                                <button id="stopButton" style="display: none;">
+                                    <img src="assets/stop.png" alt="Stop" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -639,6 +753,9 @@
                 <div class="authFooter">
                     <p>Don't have an account? <a href="#" id="signUpLink">Sign up on premierecopilot.com</a></p>
                 </div>
+                <div style="font-size: 10px; color: #888; margin-top: 6px; text-align: center;">
+                    Shortcuts: Ctrl+A/C/X, Cmd+Maj+V
+                </div>
             </div>
         </div>
     </div>
@@ -649,6 +766,7 @@
             <div class="authHeader">
                 <h2 id="userModalName"></h2>
                 <p>Formula: <span id="membershipStatus" class="membershipBadge"></span></p>
+                <p>Generation Credits: <span id="userModalGenerationCredits" style="font-weight: bold; color: #00FF9C;">-</span></p>
             </div>
             
             <div class="authForm">
@@ -667,33 +785,19 @@
                 <div class="authFooter">
                     <p>Quick support : admin@premierecopilot.com</p>
                 </div>
+                <div style="font-size: 10px; color: #888; margin-top: 6px; text-align: center;">
+                    Shortcuts: Ctrl+A/C/X, Cmd+Maj+V
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modale de sauvegarde de message -->
-    <div class="messageSaveModal" id="messageSaveModal">
-        <div class="messageSaveModalContent">
-            <div class="messageContent" id="messageToSave"></div>
-            <div class="saveInputContainer">
-                <label for="saveName">Task Name</label>
-                <input type="text" id="saveName" class="saveNameInput" placeholder="Enter a name for this task">
-            </div>
-            <div class="saveModalActions">
-                <button class="cancelButton" id="cancelSaveButton">Cancel</button>
-                <button class="saveButton" id="confirmSaveButton">Save</button>
-            </div>
-        </div>
-    </div>
+    <!-- Tooltip personnalisé global -->
+    <div id="custom-tooltip" class="custom-tooltip"></div>
 
-
-
-
-
-
-<script src="./lib/CSInterface.js"></script>
-<script src="js/bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Scripts -->
+    <script src="./lib/CSInterface.js"></script>
+    <script src="js/bundle.min.js"></script>
 
 
 </body>

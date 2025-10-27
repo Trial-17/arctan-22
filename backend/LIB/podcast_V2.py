@@ -626,9 +626,9 @@ def main_podcast(file_paths, front_data, user_token=None):
             resp.raise_for_status()
             access_data = resp.json()
             if not access_data.get("podcast_access", False):
-                raise PermissionError("L'utilisateur n'a pas accès au podcast (abonnement insuffisant).")
+                raise PermissionError("You don't have access to the podcast panel (subscription insufficient).")
         except Exception as e:
-            raise PermissionError(f"Erreur lors de la vérification d'accès podcast: {e}")
+            raise PermissionError(f"Erreur during podcast access check: {e}")
     
 
 
