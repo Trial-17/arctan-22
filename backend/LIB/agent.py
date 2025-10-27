@@ -795,7 +795,7 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                 # Copier le preset s'il n'existe pas déjà
                 if not documents_preset_path.exists():
                     # Trouver le preset source - remonter à la racine du projet (arctan-22/)
-                    project_root = Path(__file__).parent.parent
+                    project_root = Path(__file__).parent.parent.parent.parent
                     print(f"Project root: {project_root}")
                     
                     # Chemin dans la version de développement
