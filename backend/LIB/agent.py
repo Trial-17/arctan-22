@@ -1053,35 +1053,35 @@ async def apply_effect(ID, prompt, piste):
         {
             "name": "AE.ADBE Lumetri",
             "description": "to perform color correction",
-            14 : "Temperature, range -300 - 300 (initial value 0)",
-            15 : "Tint, range 300 - 300 (initial value 0)",
-            16 : "Saturation, range 0 - 300 (initial value 100)",
-            19 : "Exposure, range -7 - 7 (initial value 0)",
-            20 : "Contrast, range -150 - 150 (initial value 0)",
-            21 : "Highlights, range -150 - 150 (initial value 0)",
-            22 : "Shadows, range -150 - 150 (initial value 0)",
-            23 : "Whites, range -150 - 150 (initial value 100)",
-            24 : "Blacks, range -150 - 150 (initial value 0)",
+            14 : "Temperature, range -300, 300 (initial value 0)",
+            15 : "Tint, range 300, 300 (initial value 0)",
+            16 : "Saturation, range 0, 300 (initial value 100)",
+            19 : "Exposure, range -7, 7 (initial value 0)",
+            20 : "Contrast, range -150, 150 (initial value 0)",
+            21 : "Highlights, range -150, 150 (initial value 0)",
+            22 : "Shadows, range -150, 150 (initial value 0)",
+            23 : "Whites, range -150, 150 (initial value 100)",
+            24 : "Blacks, range -150, 150 (initial value 0)",
         },
         {
             "name": "AE.ADBE Opacity",
             "description": "to perform opacity",
-            0: "Opacity, range 0-100",
+            0: "Opacity, range 0, 100",
         },
         {
             "name": "AE.ADBE Motion",
             "description": "to perform motion, position",
-            0: "Position X, range -0.5 - 1.5  (initial centered value 0.5)",
-            1: "Position Y, range -0.5 - 1.5  (initial centered value 0.5)", # merge avec la 0 pour former un array [x, y]
-            2: "Scale, range 0-1000 (initial value 100)",
-            4: "Rotation, range 0-360 (initial value 0)",
-            5: "Anchor Point X, range -0.5 - 1.5  (initial centered value 0.5)",
-            6: "Anchor Point Y, range -0.5 - 1.5  (initial centered value 0.5)", # merge avec la 5 pour former un array [x, y]           
-            7 : "Crop Left, range 0-100 (initial value 0)",
-            8 : "Crop Top, range 0-100 (initial value 0)",
-            9 : "Crop Right, range 0-100 (initial value 0)",
-            10 : "Crop Bottom, range 0-100 (initial value 0)",
-            11 : "Anti-flicker Filter, range 0-1 (initial value 0)", # remettre en 6 
+            0: "Position X, range -0.5, 1.5  (initial centered value 0.5)",
+            1: "Position Y, range -0.5, 1.5  (initial centered value 0.5)", # merge avec la 0 pour former un array [x, y]
+            2: "Scale, range 0, 1000 (initial value 100)",
+            4: "Rotation, range 0, 360 (initial value 0)",
+            5: "Anchor Point X, range -0.5, 1.5  (initial centered value 0.5)",
+            6: "Anchor Point Y, range -0.5, 1.5  (initial centered value 0.5)", # merge avec la 5 pour former un array [x, y]           
+            7 : "Crop Left, range 0, 100 (initial value 0)",
+            8 : "Crop Top, range 0, 100 (initial value 0)",
+            9 : "Crop Right, range 0, 100 (initial value 0)",
+            10 : "Crop Bottom, range 0, 100 (initial value 0)",
+            11 : "Anti-flicker Filter, range 0, 1 (initial value 0)", # remettre en 6 
         }
     ]
     
@@ -1099,8 +1099,6 @@ async def apply_effect(ID, prompt, piste):
         project_effect_instruction=f"""
         You are a professional video editor expert in Premiere Pro.
         Your task is to select the right effects to perform the user prompt.
-
-        ### RULES:
 
         ### EFFECTS:
         {effect_list}
@@ -1130,7 +1128,7 @@ async def apply_effect(ID, prompt, piste):
         Your task is to select the right properties of these effects to perform the user prompt.
 
         ### RULES:
-        - only return the properties that are needed t be edited to perform the user prompt
+        - only return the properties that are needed to be edited to perform the user prompt
         - always respect the range of the property values to edit
         - if the prompt solo ask to add an effect, return 999 as property number and a single property to edit
 
@@ -1164,13 +1162,83 @@ async def apply_effect(ID, prompt, piste):
         
         effects_properties = gemini_call(full_prompt, project_effect_instruction, effects_properties_structured_output, None, 0.5, MODEL_TOOL_2 )
         
-        print(json.dumps(effects_properties, indent=2))
+        # print(json.dumps(effects_properties, indent=2))
         
         
         # 2. Appliquer les effets
         type_piste = piste.split(" ")[0]
         no_piste = int(piste.split(" ")[1])
-        for effect_property in effects_properties:
+        
+        # Pré-traitement : fusionner les propriétés par paires
+        # Propriétés 0-1 (Position X/Y) et 5-6 (Anchor Point X/Y) doivent être des arrays
+        processed_properties = []
+        paired_indices = set()  # Pour tracker les indices déjà traités
+        
+        for i, effect_property in enumerate(effects_properties):
+            if i in paired_indices:
+                continue
+                
+            prop_num = effect_property["property_number"]
+            effect_name = effect_property["effect_name"]
+            
+            # Retraitement spécial pour AE.ADBE Motion
+            if effect_name == "AE.ADBE Motion":
+                # Remapper property_number 11 -> 6
+                if prop_num == 11:
+                    effect_property["property_number"] = 6
+                    prop_num = 6
+                
+                # Traiter les paires 0-1 (Position) et 5-6 (Anchor Point)
+                if prop_num in [0, 1, 5, 6]:
+                    # Déterminer le numéro de base et le numéro paire
+                    base_num = 0 if prop_num in [0, 1] else 5
+                    pair_num = base_num + 1
+                    
+                    # Chercher la propriété paire
+                    pair_property = None
+                    pair_index = None
+                    for j, other_prop in enumerate(effects_properties):
+                        if (j != i and 
+                            other_prop["effect_name"] == effect_name and 
+                            other_prop["property_number"] == pair_num):
+                            pair_property = other_prop
+                            pair_index = j
+                            break
+                    
+                    # Si c'est la propriété X (0 ou 5), créer l'array
+                    if prop_num == base_num:
+                        x_value = effect_property["property_value"]
+                        y_value = pair_property["property_value"] if pair_property else 0.5
+                        
+                        # Créer une nouvelle propriété avec un array [x, y]
+                        merged_property = effect_property.copy()
+                        merged_property["property_value"] = [x_value, y_value]
+                        processed_properties.append(merged_property)
+                        
+                        if pair_index is not None:
+                            paired_indices.add(pair_index)
+                    # Si c'est la propriété Y (1 ou 6) sans X correspondant
+                    elif pair_property is None:
+                        x_value = 0.5
+                        y_value = effect_property["property_value"]
+                        
+                        # Créer une nouvelle propriété avec un array [x, y]
+                        merged_property = effect_property.copy()
+                        merged_property["property_number"] = base_num  # Utiliser le numéro de base (0 ou 5)
+                        merged_property["property_value"] = [x_value, y_value]
+                        processed_properties.append(merged_property)
+                else:
+                    # Propriété qui ne nécessite pas de fusion
+                    processed_properties.append(effect_property)
+            else:
+                # Effet autre que AE.ADBE Motion
+                processed_properties.append(effect_property)
+        
+        # 3. Appliquer les effets traités
+        for effect_property in processed_properties:
+
+            
+            
             args =  {
                         "ID": ID,
                         "effect_name": effect_property["effect_name"],
@@ -1179,7 +1247,7 @@ async def apply_effect(ID, prompt, piste):
                         "type_piste": type_piste,
                         "no_piste": no_piste
                     }
-            
+            print(args)
             # Appeler la fonction ExtendScript
             call_id = str(uuid.uuid4())
             script_arg = json.dumps(args)
@@ -1450,7 +1518,7 @@ async def get_timeline_context(prompt: str, include_metadata: bool = False, incl
         }
     }
             
-    context = gemini_call(full_prompt, system_instruction, structured_output, None, 0.2, MODEL_CONTEXT_2 )
+    context = gemini_call(full_prompt, system_instruction, structured_output, None, 0.4, MODEL_CONTEXT_2 )
     
 
     final_context = []
@@ -1470,7 +1538,7 @@ async def get_timeline_context(prompt: str, include_metadata: bool = False, incl
                         final_context.append(item)
     
     
-    
+    return final_context
     
 
 class EditTimelineStructure(BaseModel):
@@ -1494,10 +1562,10 @@ async def edit_timeline_structure(prompt: str, include_metadata: bool = False, i
     """
     
     try: 
-    
+        timeline_V0 = await get_timeline_structure.ainvoke({"include_metadata": include_metadata, "include_effects": include_effects})
         project_final_context = await get_project_context(prompt, include_metadata)
         final_context = await get_timeline_context(prompt, include_metadata, include_effects)
-        
+
         
         #3. Générer la liste d'action 
         
@@ -1554,11 +1622,6 @@ async def edit_timeline_structure(prompt: str, include_metadata: bool = False, i
                         "type": "string",
                         "description": "The nodeId in the project of the item to insert",
                     },
-                    # "type": {
-                    #     "type": "string",
-                    #     "description": "The type of the item to move. video or audio",
-                    #     "enum": ["video", "audio"],
-                    # },
                     "track_index": {
                         "type": "number",
                         "description": "The track index to insert the item to. starting from 0",
@@ -1742,12 +1805,15 @@ async def edit_timeline_structure(prompt: str, include_metadata: bool = False, i
             modify the timeline,
             and return a list of actions to perform
             
-            ### Rules: 
+            ### RULES: 
+            - the ID must be an existing ID in the TIMELINE context
+            - the nodeId must be an existing nodeId in the PROJECT context
             - be careful on the track number to not overlap clips, audio or video
             - add marker to add informations or suggestions if needed
             - you must perform the actions in the right order
         """
         liste_actions = gemini_call(full_prompt, system_instruction, None, tool_list, 0.2, "gemini-2.5-flash-lite" )
+        liste_action_for_result = liste_actions.copy()
         print("🎬 Actions timeline à exécuter:", liste_actions)
         
         # 4. Application des opérations à effectuer
@@ -1822,7 +1888,7 @@ async def edit_timeline_structure(prompt: str, include_metadata: bool = False, i
             return "Error: Timed out waiting for JavaScript function to execute."
         
         
-        result = f"OBSERVATION : Timeline has been edited successfully for the prompt: ## PROMPT ## {prompt} . The following actions have been performed: {liste_actions}"
+        result = f"OBSERVATION : Timeline has been edited successfully for the prompt: ## PROMPT ## {prompt} . The following actions have been performed: {liste_action_for_result}"
         
         
         return result
