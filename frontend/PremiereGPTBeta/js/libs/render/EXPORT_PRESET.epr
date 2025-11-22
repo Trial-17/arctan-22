@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PremiereData Version="3">
-	<PresetName>4K_2.35_FILM_CINE_HIGHQUALITY</PresetName>
-	<PresetComments>Personnalisé</PresetComments>
+	<PresetName>EXPORT_4K 60fps Sequence</PresetName>
+	<PresetComments>Custom</PresetComments>
 	<PresetUserComments></PresetUserComments>
 	<PresetCreatorApp>Premiere Pro</PresetCreatorApp>
 	<ExporterName></ExporterName>
@@ -9,13 +9,13 @@
 	<ExporterFileType>1211250228</ExporterFileType>
 	<ExportParamContainer ObjectRef="1"/>
 	<CaptionParamContainer ObjectRef="136"/>
-	<PresetID>c74e1005-a190-4a0b-a59a-65b0e8a162db</PresetID>
+	<PresetID>87b1e881-5bb9-488a-86b9-40c6dea71a34</PresetID>
 	<DoAudio>true</DoAudio>
 	<DoVideo>true</DoVideo>
 	<FolderDisplayPath></FolderDisplayPath>
 	<StandardFilters Version="1">
 		<CropType>0</CropType>
-		<UseFrameBlending>false</UseFrameBlending>
+		<UseMaximumRenderQuality>true</UseMaximumRenderQuality><UseFrameBlending>false</UseFrameBlending>
 		<CustomStartTime>-101606400000000000</CustomStartTime>
 		<TimeInterpolationType>0</TimeInterpolationType>
 	</StandardFilters>
@@ -82,7 +82,7 @@
 		<ContainedParamsVersion>1</ContainedParamsVersion>
 	</ExporterParamContainer>
 	<ExporterParam ObjectID="8" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>1094796064</ParamValue>
+		<ParamValue>320</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>0</ParamOrdinalValue>
 		<ParamIdentifier>ADBEMPEGAudioFormat</ParamIdentifier>
@@ -337,7 +337,7 @@
 		<ContainedParamsVersion>1</ContainedParamsVersion>
 	</ExporterParamContainer>
 	<ExporterParam ObjectID="43" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>7</ParamValue>
+		<ParamValue>320</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>0</ParamOrdinalValue>
 		<ParamIdentifier>ADBEDolby_1</ParamIdentifier>
@@ -611,7 +611,7 @@
 		<ParamType>7</ParamType>
 		<ParamOrdinalValue>0</ParamOrdinalValue>
 		<ParamIdentifier>ADBEVideoMatchSource</ParamIdentifier>
-		<ParamArbData Encoding="base64" Checksum="3096284557">BgAAAA==</ParamArbData>
+		<ParamArbData Encoding="base64" Checksum="2951318925">ehAAAA==</ParamArbData>
 	</ExporterParam>
 	<ExporterParam ObjectID="83" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
 		<ParamValue>100</ParamValue>
@@ -623,7 +623,7 @@
 		<ParamIdentifier>ADBEVideoQuality</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="84" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>3840</ParamValue>
+		<ParamValue>1920</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>2</ParamOrdinalValue>
 		<ParamMinValue>16</ParamMinValue>
@@ -631,7 +631,7 @@
 		<ParamIdentifier>ADBEVideoWidth</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="85" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>1634</ParamValue>
+		<ParamValue>1080</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>3</ParamOrdinalValue>
 		<ParamMinValue>16</ParamMinValue>
@@ -639,12 +639,11 @@
 		<ParamIdentifier>ADBEVideoHeight</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="86" ClassID="8def7863-204e-4206-8791-54a78f15c66b" Version="1">
-		<ParamValue>8467200000</ParamValue>
+		<ParamValue>10160640000</ParamValue>
 		<ParamType>4</ParamType>
 		<ParamOrdinalValue>4</ParamOrdinalValue>
 		<ParamMinValue>1</ParamMinValue>
 		<ParamMaxValue>254016000000</ParamMaxValue>
-		<ParamIsDisabled>true</ParamIsDisabled>
 		<ParamIdentifier>ADBEVideoFPS</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="87" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
@@ -658,6 +657,7 @@
 		<ParamValue>1,1</ParamValue>
 		<ParamType>11</ParamType>
 		<ParamOrdinalValue>6</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
 		<ParamIdentifier>ADBEVideoAspect</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="89" ClassID="d0f6b8af-8ddb-4381-acf8-3e817480d07d" Version="1">
@@ -666,10 +666,10 @@
 		<ParamIdentifier>ADBERenderDeepColor</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="90" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>8</ParamOrdinalValue>
 		<ParamIsDisabled>true</ParamIsDisabled>
-		<ParamIsHidden>true</ParamIsHidden>
 		<ParamIdentifier>ADBEMPEGTVStandard</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="91" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
@@ -714,6 +714,7 @@
 		<ContainedParamsVersion>1</ContainedParamsVersion>
 	</ExporterParamContainer>
 	<ExporterParam ObjectID="96" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
+		<ParamValue>1</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>0</ParamOrdinalValue>
 		<ParamIdentifier>ADBEMPEGVideoEncodingPerformanceParam</ParamIdentifier>
@@ -739,15 +740,17 @@
 		<ParamIdentifier>ADBE_H264_HDR</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="100" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>3</ParamValue>
+		<ParamValue>1</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>4</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
 		<ParamIdentifier>ADBEVideoMPEGProfile</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="101" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>52</ParamValue>
+		<ParamValue>51</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>5</ParamOrdinalValue>
+		<ParamIsDisabled>true</ParamIsDisabled>
 		<ParamIdentifier>ADBEVideoMPEGProfileLevel</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="102" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
@@ -857,7 +860,6 @@
 		<ContainedParamsVersion>1</ContainedParamsVersion>
 	</ExporterParamContainer>
 	<ExporterParam ObjectID="116" ClassID="9f049ab7-d48f-43e9-a8ca-4d7f21233625" Version="1">
-		<ParamValue>2</ParamValue>
 		<ParamType>2</ParamType>
 		<ParamOrdinalValue>0</ParamOrdinalValue>
 		<ParamMaxValue>3</ParamMaxValue>
@@ -871,7 +873,7 @@
 		<ParamIdentifier>ADBEVideoBitrateLevel</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="118" ClassID="018cf63d-c58d-4d39-97df-36b6b2d6ef88" Version="1">
-		<ParamValue>2.</ParamValue>
+		<ParamValue>2</ParamValue>
 		<ParamType>3</ParamType>
 		<ParamOrdinalValue>2</ParamOrdinalValue>
 		<ParamMinValue>0.190000000000000002220446</ParamMinValue>
@@ -881,20 +883,20 @@
 		<ParamIdentifier>ADBEVideoMinBitrate</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="119" ClassID="018cf63d-c58d-4d39-97df-36b6b2d6ef88" Version="1">
-		<ParamValue>80.</ParamValue>
+		<ParamValue>20</ParamValue>
 		<ParamType>3</ParamType>
 		<ParamOrdinalValue>3</ParamOrdinalValue>
 		<ParamMinValue>0.192000000000000003996803</ParamMinValue>
-		<ParamMaxValue>300.</ParamMaxValue>
+		<ParamMaxValue>240.</ParamMaxValue>
 		<ParamIsSlider>true</ParamIsSlider>
 		<ParamIdentifier>ADBEVideoTargetBitrate</ParamIdentifier>
 	</ExporterParam>
 	<ExporterParam ObjectID="120" ClassID="018cf63d-c58d-4d39-97df-36b6b2d6ef88" Version="1">
-		<ParamValue>96.</ParamValue>
+		<ParamValue>24</ParamValue>
 		<ParamType>3</ParamType>
 		<ParamOrdinalValue>4</ParamOrdinalValue>
 		<ParamMinValue>0.192000000000000003996803</ParamMinValue>
-		<ParamMaxValue>300.</ParamMaxValue>
+		<ParamMaxValue>240.</ParamMaxValue>
 		<ParamIsSlider>true</ParamIsSlider>
 		<ParamIsHidden>true</ParamIsHidden>
 		<ParamIdentifier>ADBEVideoMaxBitrate</ParamIdentifier>
@@ -1011,7 +1013,7 @@
 		<ParamType>10</ParamType>
 		<ParamOrdinalValue>0</ParamOrdinalValue>
 		<ParamIdentifier>ADBECaptionTabGroup</ParamIdentifier>
-		<ParamName>Légendes</ParamName>
+		<ParamName>Captions</ParamName>
 		<ExporterChildParams ObjectRef="138"/>
 	</ExporterParam>
 	<ExporterParamContainer ObjectID="138" ClassID="5c20a4a5-5e7c-4032-85b8-26ad4531fe7b" Version="1">

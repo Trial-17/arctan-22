@@ -1,9 +1,17 @@
 <!doctype html>
 <html>
+
 <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="css/style.min.css">
-    
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/podcast.css">
+    <link rel="stylesheet" href="css/imageGeneration.css">
+    <link rel="stylesheet" href="css/custom_styles.css">
+    <link rel="stylesheet" href="css/background.css">
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/tool.css">
+    <link rel="stylesheet" href="css/update.css">
+
     <title>Premiere GPTBeta</title>
     <script>
         var isNS = (navigator.appName == "Netscape") ? 1 : 0;
@@ -41,13 +49,13 @@
             return os;
         }
     </script>
-	<style>
+    <style>
         .creditCounterContent {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
-        
+
         .creditCounterAmount,
         .creditCostAmount {
             font-size: 12px;
@@ -55,26 +63,27 @@
             text-align: left;
             line-height: 1.2;
         }
-        
+
         .creditCostAmount {
             opacity: 0.9;
         }
-        
+
         .cost-label {
             margin-right: 4px;
             opacity: 0.8;
         }
-        
+
         #generationCostValue {
             font-weight: bold;
             color: #4CAF50;
         }
-        
+
         #imageGenerationCreditValue {
             font-weight: bold;
         }
     </style>
 </head>
+
 <body>
 
 
@@ -82,9 +91,9 @@
 
         <div id="blurOverlay"></div>
         <!-- Interfaces -->
-		<div id="content">
+        <div id="content">
 
-			<!-- Chat Interface -->
+            <!-- Chat Interface -->
             <div id="chatInterface">
                 <!-- Titre de l'application en arrière-plan -->
                 <div id="appTitleBackground">
@@ -92,8 +101,22 @@
                     <span class="app-title-version">Beta v2.0</span>
                 </div>
 
+                <!-- Shortcuts info section -->
+                <div id="shortcutsInfo">
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl + A/X/C</span>
+                        <span class="shortcut-separator">·</span>
+                        <span class="shortcut-desc">Select/Cut/Copy</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">⌘/Ctrl + Maj + V</span>
+                        <span class="shortcut-separator">·</span>
+                        <span class="shortcut-desc">Past</span>
+                    </div>
+                </div>
+
                 <div id="messageContainer" data-messages-container="true"></div>
-                  <!-- Conteneur des messages -->
+                <!-- Conteneur des messages -->
 
                 <!-- ✅ Interface Image Generation (cachée par défaut) -->
                 <div id="imageGenerationInterface">
@@ -103,7 +126,7 @@
                             <div class="frameContent">
                                 <div class="imageContainer"></div>
                                 <span class="frameText" style="display: none;">INPUT</span>
-                                
+
                                 <!-- Suggestions initiales -->
                                 <div class="suggestions-container" id="suggestionsContainer">
                                     <button class="suggestion-item" data-preset-id="remove-video-background">
@@ -150,8 +173,9 @@
                                         <span class="suggestion-arrow">→</span>
                                         <span class="suggestion-text">Add sound design to video or image</span>
                                     </button>
-                                </div>                                
-                                <div class="import-buttons-container" id="importButtonsContainer" style="display: none;">
+                                </div>
+                                <div class="import-buttons-container" id="importButtonsContainer"
+                                    style="display: none;">
                                     <button class="import-button" id="importFromFilesBtn">
                                         <span>Import from Files</span>
                                     </button>
@@ -164,7 +188,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Colonne droite - Contrôles -->
                         <div class="controlsColumn">
                             <div class="main-controls-box">
@@ -173,7 +197,7 @@
                                     <span class="btn-text">Generate</span>
                                     <span class="btn-cost" id="generateBtnCost" style="display: none;"></span>
                                 </button>
-                                
+
                                 <!-- Sélecteur de modèle personnalisé -->
                                 <div class="model-selector-container">
                                     <div class="custom-model-selector">
@@ -199,7 +223,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Conteneur pour les paramètres qui seront injectés par le JS -->
                                 <div id="dynamicParametersContainer"></div>
                             </div>
@@ -222,7 +246,9 @@
                                     </div>
                                     <div class="podcast_inputGroup">
                                         <div class="podcast_paramRow">
-                                            <div class="panel-param-title"><img src="assets/speakernumber.png" class="panel-title-icon-img" alt="Speaker Number Icon">Speaker Number</div>
+                                            <div class="panel-param-title"><img src="assets/speakernumber.png"
+                                                    class="panel-title-icon-img" alt="Speaker Number Icon">Speaker
+                                                Number</div>
                                             <select id="speakerCount" class="unified-select">
                                                 <option value="1">1</option>
                                                 <option value="2">2</option>
@@ -239,7 +265,9 @@
                                     </div>
                                     <div class="podcast_inputGroup">
                                         <div class="podcast_paramRow">
-                                            <div class="panel-param-title"><img src="assets/cameranumber.png" class="panel-title-icon-img" alt="Camera Number Icon">Camera Number</div>
+                                            <div class="panel-param-title"><img src="assets/cameranumber.png"
+                                                    class="panel-title-icon-img" alt="Camera Number Icon">Camera Number
+                                            </div>
                                             <select id="cameraCount" class="unified-select">
                                                 <option value="1">1</option>
                                                 <option value="2">2</option>
@@ -256,7 +284,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="podcast_boxWrapper">
                                 <div class="podcast_inputBox">
                                     <div class="podcast_inputGroup">
@@ -264,13 +292,16 @@
                                             <div class="panel-param-title has-tooltip">MIN/MAX cut time
                                                 <span class="info-tooltip">
                                                     <span class="tooltip-icon">i</span>
-                                                    Max & Min time a camera stays on screen. Empty for results similar to Autopod. Fill in to add dynamism or for a single audio track.
+                                                    Max & Min time a camera stays on screen. Empty for results similar
+                                                    to Autopod. Fill in to add dynamism or for a single audio track.
                                                 </span>
                                             </div>
                                             <div class="podcast_inputsRow">
-                                                <input type="number" id="minCutTime" class="podcast_input" min="0" step="1">
+                                                <input type="number" id="minCutTime" class="podcast_input" min="0"
+                                                    step="1">
                                                 <span class="podcast_inputSeparator">/</span>
-                                                <input type="number" id="maxCutTime" class="podcast_input" min="0" step="1">
+                                                <input type="number" id="maxCutTime" class="podcast_input" min="0"
+                                                    step="1">
                                             </div>
                                         </div>
                                     </div>
@@ -281,7 +312,8 @@
                                                     <span class="tooltip-icon">i</span>
                                                     <ul class="tooltip-list">
                                                         <li>'Standard' deletes unused clips</li>
-                                                        <li>'Disable' disables unused clips instead of deleting them</li>
+                                                        <li>'Disable' disables unused clips instead of deleting them
+                                                        </li>
                                                     </ul>
                                                 </span>
                                             </div>
@@ -302,7 +334,8 @@
 
                         <div id="advancedCutSettings" class="podcast_dynamicSection">
                             <h3 class="panel-param-title">
-                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img" alt="Cut Settings Icon">
+                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img"
+                                    alt="Cut Settings Icon">
                                 <span>Advanced Cut Settings</span>
                             </h3>
                             <div class="podcast_advancedSettings">
@@ -310,15 +343,19 @@
                                     <div class="panel-param-title has-tooltip">Delay Cuts
                                         <span class="info-tooltip info-tooltip-right">
                                             <span class="tooltip-icon">i</span>
-                                            Adds a small delay before a cut, which can create a more natural rhythm. The value is in seconds. We recommend a value between 0 and 0.5 seconds.
+                                            Adds a small delay before a cut, which can create a more natural rhythm. The
+                                            value is in seconds. We recommend a value between 0 and 0.5 seconds.
                                     </div>
                                     <div class="podcast_sliderContainer">
                                         <input type="range" id="delayCutsSlider" min="0" max="2" step="0.05" value="0">
                                         <div class="value-container">
-                                            <input type="number" id="delayCutsValue" class="podcast_sliderValue" min="0" max="2" step="0.05" value="0">
+                                            <input type="number" id="delayCutsValue" class="podcast_sliderValue" min="0"
+                                                max="2" step="0.05" value="0">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="delayCutsValue" data-step="0.05">▲</button>
-                                                <button class="stepper-button" data-for="delayCutsValue" data-step="-0.05">▼</button>
+                                                <button class="stepper-button" data-for="delayCutsValue"
+                                                    data-step="0.05">▲</button>
+                                                <button class="stepper-button" data-for="delayCutsValue"
+                                                    data-step="-0.05">▼</button>
                                             </div>
                                         </div>
                                     </div>
@@ -333,10 +370,13 @@
                                     <div class="podcast_sliderContainer">
                                         <input type="range" id="ignoreCutSlider" min="0" max="7" step="0.25" value="1">
                                         <div class="value-container">
-                                            <input type="number" id="ignoreCutValue" class="podcast_sliderValue" min="0" max="7" step="0.25" value="1">
+                                            <input type="number" id="ignoreCutValue" class="podcast_sliderValue" min="0"
+                                                max="7" step="0.25" value="1">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="ignoreCutValue" data-step="0.25">▲</button>
-                                                <button class="stepper-button" data-for="ignoreCutValue" data-step="-0.25">▼</button>
+                                                <button class="stepper-button" data-for="ignoreCutValue"
+                                                    data-step="0.25">▲</button>
+                                                <button class="stepper-button" data-for="ignoreCutValue"
+                                                    data-step="-0.25">▼</button>
                                             </div>
                                         </div>
                                     </div>
@@ -346,7 +386,8 @@
 
                         <div id="speakersParameters" class="podcast_dynamicSection">
                             <h3 class="panel-param-title">
-                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img" alt="Parameters Icon">
+                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img"
+                                    alt="Parameters Icon">
                                 <span>AudioTracks Parameters</span>
                             </h3>
                             <div class="speakersGrid">
@@ -356,7 +397,8 @@
 
                         <div id="camerasParameters" class="podcast_dynamicSection">
                             <h3 class="panel-param-title">
-                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img" alt="Parameters Icon">
+                                <img src="assets/speakerscamerasparameters.png" class="panel-title-icon-img"
+                                    alt="Parameters Icon">
                                 <span>VideoTracks Parameters</span>
                             </h3>
                             <!-- Les paramètres des caméras seront ajoutés ici dynamiquement -->
@@ -369,85 +411,107 @@
                     <div id="toolContainer">
                         <div class="podcast_dynamicSection" id="jumpCutBox">
                             <div class="panel-param-title">
-                                <img src="assets/alignement.png" class="panel-title-icon-img no-filter" alt="Jump Cut Icon">
+                                <img src="assets/alignement.png" class="panel-title-icon-img no-filter"
+                                    alt="Jump Cut Icon">
                                 <span>Jump Cut</span>
                             </div>
                             <div class="podcast_advancedSettings" id="jumpCutSliders1">
                                 <!-- Slider 1 -->
                                 <div class="podcast_sliderRow">
                                     <div class="panel-param-title has-tooltip">Silence Cutoff
-                                        <span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>The audio level (in dB) below which sound is considered silence.</span>
+                                        <span class="info-tooltip info-tooltip-right"><span
+                                                class="tooltip-icon">i</span>The audio level (in dB) below which sound
+                                            is considered silence.</span>
                                     </div>
                                     <div class="podcast_sliderContainer">
-                                        <input type="range" id="silenceCutoffSlider" min="-100" max="-1" step="1" value="-50">
+                                        <input type="range" id="silenceCutoffSlider" min="-100" max="-1" step="1"
+                                            value="-50">
                                         <div class="value-container">
-                                            <input type="number" id="silenceCutoffValue" class="podcast_sliderValue" min="-100" max="-1" step="1" value="-50">
+                                            <input type="number" id="silenceCutoffValue" class="podcast_sliderValue"
+                                                min="-100" max="-1" step="1" value="-50">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="silenceCutoffValue" data-step="1">▲</button>
-                                                <button class="stepper-button" data-for="silenceCutoffValue" data-step="-1">▼</button>
+                                                <button class="stepper-button" data-for="silenceCutoffValue"
+                                                    data-step="1">▲</button>
+                                                <button class="stepper-button" data-for="silenceCutoffValue"
+                                                    data-step="-1">▼</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                
+
                                 <!-- Slider 2 -->
                                 <div class="podcast_sliderRow">
                                     <div class="panel-param-title has-tooltip">Remove Silences Over
-                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Remove any silent segment longer than this duration (in seconds).</span>
+                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Remove any silent
+                                            segment longer than this duration (in seconds).</span>
                                     </div>
                                     <div class="podcast_sliderContainer">
-                                        <input type="range" id="removeSilencesSlider" min="0.1" max="2" step="0.1" value="0.2">
+                                        <input type="range" id="removeSilencesSlider" min="0.1" max="2" step="0.1"
+                                            value="0.2">
                                         <div class="value-container">
-                                            <input type="number" id="removeSilencesValue" class="podcast_sliderValue" min="0.1" max="2" step="0.1" value="0.2">
+                                            <input type="number" id="removeSilencesValue" class="podcast_sliderValue"
+                                                min="0.1" max="2" step="0.1" value="0.2">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="removeSilencesValue" data-step="0.1">▲</button>
-                                                <button class="stepper-button" data-for="removeSilencesValue" data-step="-0.1">▼</button>
+                                                <button class="stepper-button" data-for="removeSilencesValue"
+                                                    data-step="0.1">▲</button>
+                                                <button class="stepper-button" data-for="removeSilencesValue"
+                                                    data-step="-0.1">▼</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                
+
                             <div class="podcast_advancedSettings" id="jumpCutSliders2">
                                 <!-- Slider 3 -->
                                 <div class="podcast_sliderRow">
                                     <div class="panel-param-title has-tooltip">Keep Segments Over
-                                         <span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Keep any non-silent segment longer than this duration (in seconds).</span>
+                                        <span class="info-tooltip info-tooltip-right"><span
+                                                class="tooltip-icon">i</span>Keep any non-silent segment longer than
+                                            this duration (in seconds).</span>
                                     </div>
                                     <div class="podcast_sliderContainer">
-                                        <input type="range" id="keepSegmentsSlider" min="0.1" max="2" step="0.1" value="0.2">
+                                        <input type="range" id="keepSegmentsSlider" min="0.1" max="2" step="0.1"
+                                            value="0.2">
                                         <div class="value-container">
-                                            <input type="number" id="keepSegmentsValue" class="podcast_sliderValue" min="0.1" max="2" step="0.1" value="0.2">
+                                            <input type="number" id="keepSegmentsValue" class="podcast_sliderValue"
+                                                min="0.1" max="2" step="0.1" value="0.2">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="keepSegmentsValue" data-step="0.1">▲</button>
-                                                <button class="stepper-button" data-for="keepSegmentsValue" data-step="-0.1">▼</button>
+                                                <button class="stepper-button" data-for="keepSegmentsValue"
+                                                    data-step="0.1">▲</button>
+                                                <button class="stepper-button" data-for="keepSegmentsValue"
+                                                    data-step="-0.1">▼</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                
+
                                 <!-- Slider 4 -->
                                 <div class="podcast_sliderRow">
                                     <div class="panel-param-title has-tooltip">Padding
-                                         <span class="info-tooltip"><span class="tooltip-icon">i</span>Add a small amount of padding (in seconds) to the start and end of each kept segment.</span>
+                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Add a small amount
+                                            of padding (in seconds) to the start and end of each kept segment.</span>
                                     </div>
                                     <div class="podcast_sliderContainer">
                                         <input type="range" id="paddingSlider" min="0.1" max="2" step="0.1" value="0.2">
                                         <div class="value-container">
-                                            <input type="number" id="paddingValue" class="podcast_sliderValue" min="0.1" max="2" step="0.1" value="0.2">
+                                            <input type="number" id="paddingValue" class="podcast_sliderValue" min="0.1"
+                                                max="2" step="0.1" value="0.2">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="paddingValue" data-step="0.1">▲</button>
-                                                <button class="stepper-button" data-for="paddingValue" data-step="-0.1">▼</button>
+                                                <button class="stepper-button" data-for="paddingValue"
+                                                    data-step="0.1">▲</button>
+                                                <button class="stepper-button" data-for="paddingValue"
+                                                    data-step="-0.1">▼</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                
+
                             <div class="preview-area" id="jumpCutPreviewArea">
                                 <span class="preview-area-text">Press the Preview button</span>
                             </div>
-                
+
                             <div class="tool-button-row" id="jumpCutButtons">
                                 <button class="btn-main blue" id="jumpCutPreview">
                                     <span>Preview</span>
@@ -464,14 +528,17 @@
                         <!-- Subtitles Pro Tool -->
                         <div class="podcast_dynamicSection" id="subtitlesProBox">
                             <div class="panel-param-title has-tooltip">
-                                <img src="assets/srt.png" class="panel-title-icon-img no-filter" alt="Subtitles Pro Icon">
+                                <img src="assets/srt.png" class="panel-title-icon-img no-filter"
+                                    alt="Subtitles Pro Icon">
                                 <span class="pro-feature">Subtitles Pro</span>
                                 <span class="info-tooltip info-tooltip-top">
                                     <span class="tooltip-icon">i</span>
                                     <ul class="tooltip-list">
-                                        <li>Generate a transcription quickly with the most powerful speech-to-text model, adding context.</li>
+                                        <li>Generate a transcription quickly with the most powerful speech-to-text
+                                            model, adding context.</li>
                                         <li>Automatic spelling correction.</li>
-                                        <li>Intelligent SRT generation, respecting punctuation and syntax, and beautified.</li>
+                                        <li>Intelligent SRT generation, respecting punctuation and syntax, and
+                                            beautified.</li>
                                         <li>The generated SRT is automatically imported into a bin in the project.</li>
                                         <li>Production cost requires a subscription for access.</li>
                                     </ul>
@@ -482,30 +549,40 @@
                             <div class="podcast_advancedSettings" id="subtitlesProSliders">
                                 <div class="podcast_sliderRow">
                                     <div class="panel-param-title has-tooltip">Max Caracteres
-                                        <span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Maximum number of characters per subtitle line. A small tolerance is admitted.</span>
+                                        <span class="info-tooltip info-tooltip-right"><span
+                                                class="tooltip-icon">i</span>Maximum number of characters per subtitle
+                                            line. A small tolerance is admitted.</span>
                                     </div>
                                     <div class="podcast_sliderContainer">
                                         <input type="range" id="maxCharsSlider" min="20" max="200" step="5" value="42">
                                         <div class="value-container">
-                                            <input type="number" id="maxCharsValue" class="podcast_sliderValue" min="20" max="200" step="5" value="42">
+                                            <input type="number" id="maxCharsValue" class="podcast_sliderValue" min="20"
+                                                max="200" step="5" value="42">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="maxCharsValue" data-step="5">▲</button>
-                                                <button class="stepper-button" data-for="maxCharsValue" data-step="-5">▼</button>
+                                                <button class="stepper-button" data-for="maxCharsValue"
+                                                    data-step="5">▲</button>
+                                                <button class="stepper-button" data-for="maxCharsValue"
+                                                    data-step="-5">▼</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="podcast_sliderRow">
                                     <div class="panel-param-title has-tooltip">Threshold
-                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Threshold in seconds where space between subtitles will be filled.</span>
+                                        <span class="info-tooltip"><span class="tooltip-icon">i</span>Threshold in
+                                            seconds where space between subtitles will be filled.</span>
                                     </div>
                                     <div class="podcast_sliderContainer">
-                                        <input type="range" id="thresholdSlider" min="0" max="2" step="0.05" value="0.2">
+                                        <input type="range" id="thresholdSlider" min="0" max="2" step="0.05"
+                                            value="0.2">
                                         <div class="value-container">
-                                            <input type="number" id="thresholdValue" class="podcast_sliderValue" min="0" max="2" step="0.05" value="0.2">
+                                            <input type="number" id="thresholdValue" class="podcast_sliderValue" min="0"
+                                                max="2" step="0.05" value="0.2">
                                             <div class="stepper-buttons">
-                                                <button class="stepper-button" data-for="thresholdValue" data-step="0.05">▲</button>
-                                                <button class="stepper-button" data-for="thresholdValue" data-step="-0.05">▼</button>
+                                                <button class="stepper-button" data-for="thresholdValue"
+                                                    data-step="0.05">▲</button>
+                                                <button class="stepper-button" data-for="thresholdValue"
+                                                    data-step="-0.05">▼</button>
                                             </div>
                                         </div>
                                     </div>
@@ -516,21 +593,30 @@
                             <div class="podcast_advancedSettings" id="subtitlesProSettings">
                                 <div class="tool-settings-row-triple">
                                     <div class="setting-item">
-                                        <div class="panel-param-title has-tooltip">Model<span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Choose the AI model for spelling correction. GPT-5 is more advanced.</span></div>
+                                        <div class="panel-param-title has-tooltip">Model<span
+                                                class="info-tooltip info-tooltip-right"><span
+                                                    class="tooltip-icon">i</span>Choose the AI model for spelling
+                                                correction. GPT-5 is more advanced.</span></div>
                                         <select id="subtitleModelSelect" class="unified-select">
                                             <option value="gpt-5">gpt-5</option>
                                             <option value="gpt-4.1">gpt-4.1</option>
                                         </select>
                                     </div>
                                     <div class="setting-item">
-                                        <div class="panel-param-title has-tooltip">Double Line<span class="info-tooltip info-tooltip-top"><span class="tooltip-icon">i</span>Allow subtitles to span across two lines</span></div>
+                                        <div class="panel-param-title has-tooltip">Double Line<span
+                                                class="info-tooltip info-tooltip-top"><span
+                                                    class="tooltip-icon">i</span>Allow subtitles to span across two
+                                                lines</span></div>
                                         <label class="switch">
                                             <input type="checkbox" id="doubleLineSwitch" checked>
                                             <span class="slider round"></span>
                                         </label>
                                     </div>
                                     <div class="setting-item">
-                                        <div class="panel-param-title has-tooltip">Punctuation End<span class="info-tooltip info-tooltip-top"><span class="tooltip-icon">i</span>Ensure that each punctuation mark ends a subtitle line, if possible.</span></div>
+                                        <div class="panel-param-title has-tooltip">Punctuation End<span
+                                                class="info-tooltip info-tooltip-top"><span
+                                                    class="tooltip-icon">i</span>Ensure that each punctuation mark ends
+                                                a subtitle line, if possible.</span></div>
                                         <label class="switch">
                                             <input type="checkbox" id="punctuationSwitch" checked>
                                             <span class="slider round"></span>
@@ -544,14 +630,16 @@
                                 <button class="btn-main green" id="generateSubtitles" style="flex: 1;">
                                     <span>Generate Subtitles</span>
                                 </button>
-                                <span class="tool-note" style="flex: 3;">Use the global prompt box to indicate the proper nouns or any others specifications</span>
+                                <span class="tool-note" style="flex: 3;">Use the global prompt box to indicate the
+                                    proper nouns or any others specifications</span>
                             </div>
                         </div>
 
                         <!-- AudioResearch Tool -->
                         <div class="podcast_dynamicSection" id="audioResearchBox">
                             <div class="panel-param-title has-tooltip">
-                                <img src="assets/documentation.png" class="panel-title-icon-img" alt="AudioResearch Icon">
+                                <img src="assets/documentation.png" class="panel-title-icon-img"
+                                    alt="AudioResearch Icon">
                                 <span class="pro-feature">AudioResearch</span>
                                 <span class="info-tooltip info-tooltip-top">
                                     <span class="tooltip-icon">i</span>
@@ -565,7 +653,10 @@
                             <!-- Model Selection Row -->
                             <div class="audio-research-setting-row">
                                 <div class="setting-item">
-                                    <div class="panel-param-title has-tooltip">Model<span class="info-tooltip info-tooltip-right"><span class="tooltip-icon">i</span>Choose the AI model for research. Pro is more powerful but slower.</span></div>
+                                    <div class="panel-param-title has-tooltip">Model<span
+                                            class="info-tooltip info-tooltip-right"><span
+                                                class="tooltip-icon">i</span>Choose the AI model for research. Pro is
+                                            more powerful but slower.</span></div>
                                     <select id="audioResearchModelSelect" class="unified-select">
                                         <option value="flash">gemini-2.5-flash</option>
                                         <option value="pro">gemini-2.5-pro</option>
@@ -607,7 +698,7 @@
                         <button class="topIcon" id="modelButton">
                             <img src="assets/model.png" alt="Model" />
                         </button>
-                        
+
                         <!-- Model selection menu -->
                         <div id="modelDropdownMenu" class="model-dropdown-menu" style="display: none;">
                             <div class="model-option" data-model="fast">
@@ -631,7 +722,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Recommandations flottantes -->
                 <div id="recommendationsContainer">
                     <div class="recommendation-item">
@@ -648,7 +739,7 @@
                     </div>
                 </div>
 
-                 <!-- Chatbox toujours visible en bas -->
+                <!-- Chatbox toujours visible en bas -->
                 <div id="chatBox">
                     <!-- Conteneur principal avec flexbox -->
                     <div id="chatContent">
@@ -656,7 +747,7 @@
                         <div id="inputContainer">
                             <textarea id="messageInput" placeholder="Message to Copilot" rows="1"></textarea>
                         </div>
-                        
+
                         <!-- Barre d'actions alignée verticalement -->
                         <div id="chatActions">
                             <!-- Icônes à gauche -->
@@ -666,11 +757,11 @@
                                     <span class="chatIconText">Podcast</span>
                                 </button>
                                 <button class="chatIcon" id="imageGenerationButton">
-                                    <img src="assets/atom.png"  />
+                                    <img src="assets/atom.png" />
                                     <span class="chatIconText">Generative AI</span>
                                 </button>
                                 <button class="chatIcon" id="toolButton">
-                                    <img src="assets/edit.png"  />
+                                    <img src="assets/edit.png" />
                                     <span class="chatIconText">Tools</span>
                                 </button>
                             </div>
@@ -680,8 +771,8 @@
                             <div id="rightActions">
                                 <button id="sendButton" class="sendButton">
                                     <img src="assets/send.png" alt="Send" />
-                                </button>                               
-                                 <!-- Animation de chargement (cachée par défaut) -->
+                                </button>
+                                <!-- Animation de chargement (cachée par défaut) -->
                                 <div id="loadingIndicator">
                                     <img src="assets/animation.gif" alt="Loading..." />
                                 </div>
@@ -697,7 +788,7 @@
 
 
 
-		</div>
+        </div>
 
     </div>
 
@@ -732,24 +823,24 @@
                 <h2>Welcome Back ! </h2>
                 <p>Sign in to continue</p>
             </div>
-            
+
             <div class="authForm">
                 <div class="inputGroup">
                     <label>Email</label>
                     <input type="email" id="authEmail" placeholder="Enter your email">
                 </div>
-                
+
                 <div class="inputGroup">
                     <label>Password</label>
                     <input type="password" id="authPassword" placeholder="Enter your password">
                 </div>
-                
+
                 <button id="signInButton" class="authButton">
                     <span>Sign In</span>
                 </button>
-                
+
                 <div id="statusMessage" class="statusMessage" style="display: none;"></div>
-                
+
                 <div class="authFooter">
                     <p>Don't have an account? <a href="#" id="signUpLink">Sign up on premierecopilot.com</a></p>
                 </div>
@@ -766,18 +857,19 @@
             <div class="authHeader">
                 <h2 id="userModalName"></h2>
                 <p>Formula: <span id="membershipStatus" class="membershipBadge"></span></p>
-                <p>Generation Credits: <span id="userModalGenerationCredits" style="font-weight: bold; color: #00FF9C;">-</span></p>
+                <p>Generation Credits: <span id="userModalGenerationCredits"
+                        style="font-weight: bold; color: #00FF9C;">-</span></p>
             </div>
-            
+
             <div class="authForm">
                 <button id="documentationButton" class="authButton optionButton">
                     <span>Documentation</span>
                 </button>
-                
+
                 <button id="featureRequestButton" class="authButton optionButton">
                     <span>Request Features</span>
                 </button>
-                
+
                 <button id="logoutButton" class="authButton logoutButton">
                     <span>Log Out</span>
                 </button>
@@ -801,4 +893,5 @@
 
 
 </body>
+
 </html>

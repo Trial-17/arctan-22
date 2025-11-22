@@ -609,56 +609,70 @@ def main_podcast(file_paths, front_data, user_token=None):
     percentage_map = {"High": 0.8, "Medium": 0.6, "Low": 0.4, "Very low": 0.2}
     threshold = 1.5
     
-    lissage_duree_sec = 0.80
-    ignoreCutLessThan = front_data['global']['ignoreCutLessThan']
-    delayCuts = front_data['global']['delayCuts']
-    
+    try:
+        lissage_duree_sec = 0.80
+        ignoreCutLessThan = front_data['global']['ignoreCutLessThan']
+        delayCuts = front_data['global']['delayCuts']
+    except KeyError as e:
+        raise ValueError(f"Missing required parameter in front_data: {e}")
     
     # print(file_paths)
     # print(front_data)
 
-
+    # License validation
     if user_token is not None:
         try:
             headers = {"Authorization": f"Bearer {user_token}"}
             access_url = f"{config.API_URL}/user/podcast-access"
-            resp = requests.get(access_url, headers=headers)
+            resp = requests.get(access_url, headers=headers, timeout=10)
             resp.raise_for_status()
             access_data = resp.json()
             if not access_data.get("podcast_access", False):
-                raise PermissionError("You don't have access to the podcast panel (subscription insufficient).")
+                raise PermissionError("Podcast access denied: subscription insufficient")
+        except requests.exceptions.RequestException as e:
+            raise PermissionError(f"License validation failed: Unable to verify access ({str(e)})")
+        except PermissionError:
+            raise  # Re-raise PermissionError as-is
         except Exception as e:
-            raise PermissionError(f"Erreur during podcast access check: {e}")
+            raise PermissionError(f"License validation error: {str(e)}")
     
-
-
-    modalFormData, file_paths = transform_front_to_modal(file_paths, front_data)
-    camera_list, audio_list, cut_min, cut_max = transform_video_modal_data(modalFormData)
-
-    camera_speaker_list, camera_wide_list = separate_cameras(camera_list)
+    # Data transformation
+    try:
+        modalFormData, file_paths = transform_front_to_modal(file_paths, front_data)
+        camera_list, audio_list, cut_min, cut_max = transform_video_modal_data(modalFormData)
+        camera_speaker_list, camera_wide_list = separate_cameras(camera_list)
+    except Exception as e:
+        raise ValueError(f"Error processing configuration data: {str(e)}")
     
-    speaker_times, max_time = detecter_temps_de_parole_multi(file_paths, audio_list, lissage_duree_sec) 
+    # Audio analysis
+    try:
+        speaker_times, max_time = detecter_temps_de_parole_multi(file_paths, audio_list, lissage_duree_sec)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Audio file not found: {str(e)}")
+    except Exception as e:
+        raise RuntimeError(f"Error analyzing audio files: {str(e)}")
 
-    # plot_audio_levels_multi(file_paths, audio_list, lissage_duree_sec) 
-    speaker_times = merge_time(speaker_times)
-    speaker_times = add_start_time(speaker_times)
-    
-    timeline_V0= get_timeline(speaker_times)
+    # Timeline generation
+    try:
+        # plot_audio_levels_multi(file_paths, audio_list, lissage_duree_sec) 
+        speaker_times = merge_time(speaker_times)
+        speaker_times = add_start_time(speaker_times)
+        
+        timeline_V0= get_timeline(speaker_times)
 
-    # 
-    if cut_max != 0:
-        timeline_V1 = generate_cuts(timeline_V0, cut_min, cut_max, max_time) # application du max cut
+        # 
+        if cut_max != 0:
+            timeline_V1 = generate_cuts(timeline_V0, cut_min, cut_max, max_time) # application du max cut
+            timeline_V2 = assign_cameras_to_cuts(timeline_V1, camera_list, freq_weights) # application des caméras speaker
+        # print(camera_speaker_list, camera_wide_list)
+        else:
+            timeline_V2 = assign_cameras_to_cuts(timeline_V0, camera_speaker_list, freq_weights) # application des caméras speaker
+            
+        timeline_V3 = assign_wide_cameras(timeline_V2, camera_wide_list, percentage_map, freq_weights, threshold) # application des caméras wide
+        timeline_V4 = apply_min_time_timeline(timeline_V3, min_gap=ignoreCutLessThan) # application du ignore cut less than 
+        timeline_V5 = shift_timeline(timeline_V4, delayCuts) # application du delay cuts
 
-        timeline_V2 = assign_cameras_to_cuts(timeline_V1, camera_list, freq_weights) # application des caméras speaker
-
-    # print(camera_speaker_list, camera_wide_list)
-    else:
-        timeline_V2 = assign_cameras_to_cuts(timeline_V0, camera_speaker_list, freq_weights) # application des caméras speaker
-    timeline_V3 = assign_wide_cameras(timeline_V2, camera_wide_list, percentage_map, freq_weights, threshold) # application des caméras wide
-
-    timeline_V4 = apply_min_time_timeline(timeline_V3, min_gap=ignoreCutLessThan) # application du ignore cut less than 
-    
-    timeline_V5 = shift_timeline(timeline_V4, delayCuts) # application du delay cuts
-
-    return timeline_V5
+        return timeline_V5
+    except Exception as e:
+        raise RuntimeError(f"Error generating podcast timeline: {str(e)}")
 

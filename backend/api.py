@@ -17,6 +17,7 @@ import uvicorn
 import requests
 import json
 from typing import Any, Dict
+import logging
 
 
 
@@ -42,12 +43,12 @@ def reset_shutdown_timer():
     global last_activity
     with shutdown_lock:
         last_activity = time.time()
-        print(f"🔄 Timer d'inactivité réinitialisé. Prochain arrêt dans {inactivity_timeout}s")
+        # print(f"🔄 Timer d'inactivité réinitialisé. Prochain arrêt dans {inactivity_timeout}s")
 
 def shutdown_after_timeout():
     """Thread qui surveille l'inactivité et arrête l'API après le timeout."""
     global last_activity, shutdown_enabled
-    print(f"🚀 Thread de surveillance d'inactivité démarré (timeout: {inactivity_timeout}s)")
+    # print(f"🚀 Thread de surveillance d'inactivité démarré (timeout: {inactivity_timeout}s)")
     
     while shutdown_enabled:
         with shutdown_lock:
@@ -55,14 +56,14 @@ def shutdown_after_timeout():
             time_since_last_activity = now - last_activity
         
         if time_since_last_activity >= inactivity_timeout:
-            print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
+            # print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
             os.kill(os.getpid(), signal.SIGINT)
             return
         
         # Log périodique pour vérifier que le thread fonctionne (toutes les 5 minutes)
         if int(time_since_last_activity) % 300 == 0 and int(time_since_last_activity) > 0:
             remaining = int(inactivity_timeout - time_since_last_activity)
-            print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
+            # print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
         
         time.sleep(CHECK_INTERVAL_SECONDS)
 
@@ -80,6 +81,17 @@ app = FastAPI(version="2.0.0",)
 def status():
     reset_shutdown_timer()
     return {"status": config.API_STATUS}
+
+@app.post("/stop-agent")
+def stop_agent():
+    """
+    Endpoint pour arrêter l'agent en cours d'exécution.
+    Met le flag STOP_REQUESTED à True.
+    """
+    reset_shutdown_timer()
+    config.STOP_REQUESTED = True
+    config.API_STATUS = "End"
+    return {"status": "stop_requested"}
  
 
 
@@ -140,6 +152,8 @@ async def stream_chat(request: StreamChatRequest):
     et gère l'historique de la conversation.
     """
     reset_shutdown_timer()
+    # Réinitialiser le flag de stop au début de chaque requête
+    config.STOP_REQUESTED = False
     print(f"--- Requête reçue sur /stream-chat avec le prompt: '{request.prompt}' et le modèle: '{request.model}' ---")
     config.API_STATUS = "Thinking..."
     conversation_id = request.conversation_id or str(uuid.uuid4())
@@ -189,12 +203,12 @@ async def stream_chat(request: StreamChatRequest):
                 "tool_calls": tool_calls # On ajoute les appels d'outils
             }
             ai_message = {"role": "assistant", "content": json.dumps(ai_message_content)}
-            print(f"Ai message: {ai_message}")
+            # print(f"Ai message: {ai_message}")
             # Mise à jour de l'historique
             current_history = CONVERSATION_HISTORIES.get(conversation_id, [])
             current_history.extend([user_message, ai_message])
             CONVERSATION_HISTORIES[conversation_id] = current_history
-            print(f"--- Historique de la conversation {conversation_id} mis à jour. Total d'échanges: {len(current_history)/2} ---")
+            # print(f"--- Historique de la conversation {conversation_id} mis à jour. Total d'échanges: {len(current_history)/2} ---")
             # print(CONVERSATION_HISTORIES)
 
         except Exception as e:
@@ -225,27 +239,33 @@ def podcast(request: PodcastRequest):
     reset_shutdown_timer()
     file_paths = request.paths
     front_data = request.front_data
-    token = request.token  # Récupération du token
+    token = request.token
 
     try:
         result = main_podcast(file_paths, front_data, user_token=token)
         config.API_STATUS = "End"
         config.RESULTS = result
         return {"status": "started"}
-    except PermissionError as e:
-        # Erreur d'accès au podcast
-        config.API_STATUS = "Error"
-        raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        # Autres erreurs non prévues
         config.API_STATUS = "Error"
-        raise HTTPException(status_code=500, detail=f"Erreur lors du traitement podcast: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_type": "technical",
+                "message": f"An error occurred during podcast processing: {str(e)}\n\nPlease contact us at admin@premierecopilot.com, we will get back very quickly.",
+                "technical_details": traceback.format_exc(),
+                "error": str(e)
+            }
+        )
+
 
 @app.get("/podcast-results")
 def get_podcast_results():
     reset_shutdown_timer()
     if config.API_STATUS != "End":
         return {"error": "Not ready"}
+
+    print(config.RESULTS)
     return config.RESULTS 
 
 
@@ -302,6 +322,9 @@ def prompt_enhancement(request: PromptEnhancementRequest):
     return {"result": result}
 
 
+
+
+
 # ========================================================
 #                        JUMP CUT
 # ========================================================
@@ -325,26 +348,12 @@ def jump_cut_preview(request: JumpCutPreviewRequest):
     reset_shutdown_timer()
     print(f"Received jump cut preview request with params: {request}")
 
-    if request.token is not None:
-        try:
-            headers = {"Authorization": f"Bearer {request.token}"}
-            access_url = f"{config.API_URL}/user/podcast-access"
-            resp = requests.get(access_url, headers=headers)
-            resp.raise_for_status()
-            access_data = resp.json()
-            if not access_data.get("podcast_access", False):
-                raise PermissionError("L'utilisateur n'a pas accès au podcast (abonnement insuffisant).")
-
-        except Exception as e:
-            raise PermissionError(f"Erreur lors de la vérification d'accès podcast: {e}")
-
-    
     try:
         time_segments, preview_image_path = analyser_et_visualiser_silence_amélioré(
             input_path=request.audio_path,
             db_threshold=request.silence_cutoff * (-1),
             min_silence_duration=request.remove_silences_over,
-            min_segment_duration=request.keep_segments_over, # Note: This might not be the right parameter name from the front-end
+            min_segment_duration=request.keep_segments_over,
             padding=request.padding,
             offset=request.offset,
             preview=request.preview
@@ -355,9 +364,17 @@ def jump_cut_preview(request: JumpCutPreviewRequest):
             "time_segments": time_segments
         }
     except Exception as e:
-        print(f"Error during jump cut preview generation: {e}")
-        # Return a proper error response
-        return {"error": f"Failed to generate preview: {str(e)}"}, 500
+        config.API_STATUS = "Error"
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_type": "technical",
+                "message": f"An error occurred during jump cut analysis: {str(e)}\n\nPlease contact us at admin@premierecopilot.com, we will get back very quickly.",
+                "technical_details": traceback.format_exc(),
+                "error": str(e)
+            }
+        )
+
 
 
 
@@ -391,9 +408,18 @@ def subtitles(request: SubtitlesRequest):
         )
         config.API_STATUS = "End"
         return {"srt_path": result}
+
     except Exception as e:
         config.API_STATUS = "Error API"
-        return {"error": str(e)}
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_type": "technical",
+                "message": f"An error occurred during subtitle generation: {str(e)}\n\nPlease contact us at admin@premierecopilot.com, we will get back very quickly.",
+                "technical_details": traceback.format_exc(),
+                "error": str(e)
+            }
+        )
 
 @app.get("/subtitles-results")
 def get_subtitles_results():
@@ -427,8 +453,20 @@ def audio_research(request: AudioResearchRequest):
     Recherche audio dans un dossier donné.
     """
     reset_shutdown_timer()
-    result = main_find_passages(request.audio_path, request.token, request.model, request.prompt)
-    return result
+    try:
+        result = main_find_passages(request.audio_path, request.token, request.model, request.prompt)
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_type": "technical",
+                "message": f"An error occurred during audio research: {str(e)}\n\nPlease contact us at admin@premierecopilot.com, we will get back very quickly.",
+                "technical_details": traceback.format_exc(),
+                "error": str(e)
+            }
+        )
 
 
 
@@ -436,10 +474,21 @@ def audio_research(request: AudioResearchRequest):
 
 
 
-if __name__ == "__main__":
-    from api import app
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-        
+# Filtre pour masquer les logs de polling
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Masquer les logs pour /get-exposed-function et /status
+        message = record.getMessage()
+        return message.find("/get-exposed-function") == -1 and message.find("/status") == -1 and message.find("receive-result") == -1
+
+# Appliquer le filtre au logger uvicorn
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+
 
 # if __name__ == "__main__":
-#     uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
+#     from api import app
+#     uvicorn.run(app, host="127.0.0.1", port=8000)
+        
+
+if __name__ == "__main__":
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)

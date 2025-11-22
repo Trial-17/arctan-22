@@ -21,6 +21,8 @@ from typing import List
 from langchain_core.tools import StructuredTool
 import re
 import requests
+import ast
+from LIB.gemini_logger import log_gemini_call
 
 
 def clean_prompt(text: str) -> str:
@@ -32,20 +34,119 @@ def clean_prompt(text: str) -> str:
     text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
     return text.strip()
 
+
+def fix_gemini_response(response, tool_list=None):
+    """
+    Vérifie et corrige le format de la réponse Gemini.
+    
+    Détecte si la réponse est mal formatée (texte décrivant des actions au lieu d'une liste)
+    et la convertit au bon format.
+    
+    Args:
+        response: La réponse brute de Gemini (liste d'actions ou texte)
+        tool_list: Liste des tools disponibles (pour validation)
+    
+    Returns:
+        La réponse corrigée au bon format
+    """
+    
+    try : 
+        # Si c'est déjà une liste de dictionnaires avec name et args, c'est bon
+        if isinstance(response, list) and all(isinstance(item, dict) and 'name' in item and 'args' in item for item in response):
+            return response
+        
+        # Si c'est une chaîne qui ressemble à une description de tool calls
+        if isinstance(response, str):
+            # Pattern 1: "AI Tool calls: ['Tool call: action_name args: {...}']"
+            pattern1 = r"Tool call:\s*(\w+)\s+args:\s*(\{[^}]+\})"
+            matches1 = re.findall(pattern1, response)
+            
+            if matches1:
+                tool_calls = []
+                for tool_name, args_str in matches1:
+                    try:
+                        # Nettoyer les échappements de quotes
+                        args_str = args_str.replace("\\'", "'").replace('\\"', '"')
+                        # Parser les arguments (format Python ou JSON)
+                        try:
+                            # Essayer d'abord ast.literal_eval pour le format Python
+                            args = ast.literal_eval(args_str)
+                        except (ValueError, SyntaxError):
+                            # Si ça échoue, essayer json.loads pour le format JSON
+                            args = json.loads(args_str)
+                        tool_calls.append({
+                            "name": tool_name,
+                            "args": args
+                        })
+                    except Exception as e:
+                        print(f"⚠️ Erreur lors du parsing des args pour {tool_name}: {e}")
+                        continue
+                
+                if tool_calls:
+                    print(f"✅ Correction automatique: {len(tool_calls)} tool call(s) détecté(s) et corrigé(s)")
+                    return tool_calls
+            
+            # Pattern 2: Recherche plus flexible pour "action_name(...)"
+            pattern2 = r"(\w+)\s*\(([^)]+)\)"
+            matches2 = re.findall(pattern2, response)
+            
+            if matches2 and tool_list:
+                # Vérifier que les noms correspondent à des tools disponibles
+                available_tools = [tool['name'] for tool in tool_list] if tool_list else []
+                tool_calls = []
+                
+                for tool_name, args_str in matches2:
+                    if tool_name in available_tools:
+                        try:
+                            # Essayer de parser comme JSON ou comme key=value
+                            if '{' in args_str:
+                                try:
+                                    # Essayer d'abord ast.literal_eval pour le format Python
+                                    args = ast.literal_eval(args_str)
+                                except (ValueError, SyntaxError):
+                                    # Si ça échoue, essayer json.loads pour le format JSON
+                                    args = json.loads(args_str)
+                            else:
+                                # Parser format key=value
+                                args = {}
+                                for pair in args_str.split(','):
+                                    if '=' in pair:
+                                        key, value = pair.split('=', 1)
+                                        key = key.strip().strip("'\"")
+                                        value = value.strip().strip("'\"")
+                                        args[key] = value
+                            
+                            tool_calls.append({
+                                "name": tool_name,
+                                "args": args
+                            })
+                        except Exception as e:
+                            print(f"⚠️ Erreur lors du parsing des args pour {tool_name}: {e}")
+                            continue
+                
+                if tool_calls:
+                    print(f"✅ Correction automatique (pattern 2): {len(tool_calls)} tool call(s) détecté(s) et corrigé(s)")
+                    return tool_calls
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de la correction du format de la réponse: {e}")
+        return response
+    return response
+
+
 def gemini_call(messages, system_instruction, structured_output = None, tool_list = None, temperature= 0.1,  model = "fast"):
     """
     Appelle l'API Gemini via l'API relai.
     Conserve la même interface et le même comportement que l'ancienne fonction.
     """
     from LIB import config
-    from LIB.agent import AGENT_TOKEN
     
     # Vérifier le token d'authentification
-    if not AGENT_TOKEN:
+    if not config.AGENT_TOKEN:
         raise Exception("Aucun token d'authentification disponible pour l'appel API")
     
     try:
-        print(f"🤖 Using model: {model}")
+
         
         # Convertir les messages LangChain en format dictionnaire
         messages_dict = []
@@ -92,7 +193,7 @@ def gemini_call(messages, system_instruction, structured_output = None, tool_lis
         response = requests.post(
             f"{config.API_URL}/agent",
             json=payload,
-            headers={"Authorization": f"Bearer {AGENT_TOKEN}"}
+            headers={"Authorization": f"Bearer {config.AGENT_TOKEN}"}
         )
         
         # Vérifier le statut de la réponse
@@ -102,10 +203,13 @@ def gemini_call(messages, system_instruction, structured_output = None, tool_lis
         # Extraire le résultat
         result = response.json().get("result")
         
+        log_gemini_call("custom_llm.py::gemini_call", payload, result)  # LOG
+        
         # Retourner le résultat dans le même format que l'ancienne fonction
         return result
         
     except requests.exceptions.RequestException as e:
+        log_gemini_call("custom_llm.py::gemini_call", payload if 'payload' in locals() else {}, None, str(e))  # LOG
         print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
         raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 
@@ -153,6 +257,9 @@ class PremiereGPT_LLM(BaseChatModel):
         # print("[CUSTOM LLM]--------------------------------")
         # print(f"Messages: {messages}")
         response = gemini_call(messages, None, None, self.tools, self.temperature, self.model_name)
+        
+        # Corriger le format de la réponse si nécessaire
+        response = fix_gemini_response(response, self.tools)
         
         # print(f"Response: {response}")
         
