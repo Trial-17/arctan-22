@@ -24,7 +24,6 @@ from LIB.config import PENDING_JS_CALLS
 from LIB.music_analysis_V2 import analyze_music
 from LIB.subtitles import main_transcription_for_agent
 from LIB.custom_llm import PremiereGPT_LLM
-from LIB.gemini_logger import log_gemini_call
 from LIB.AGENT_project import get_project_structure, edit_project_structure, labelize_audio
 from LIB.AGENT_timeline import get_timeline_structure, edit_timeline_structure, open_timeline
 from LIB.AGENT_export import export_sequence
@@ -249,7 +248,7 @@ def create_agent_graph(model_name: str = "fast"):
     tools = [get_project_structure, edit_project_structure, 
              get_timeline_structure, edit_timeline_structure, 
              open_timeline,
-            #  labelize_audio,
+             labelize_audio,
              get_creative_todo, 
              export_sequence,
              ]

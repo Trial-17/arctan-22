@@ -131,9 +131,9 @@ update_sequence_tool = {
     "parameters": {
         "type": "object",
         "properties": {
-            "nodeId": {
+            "sequenceId": {
                 "type": "string",
-                "description": "The nodeId of the sequence to update",
+                "description": "The sequenceId of the sequence to update. NOT the nodeId",
             },
             "videoFrameHeight": {
                 "type": "number",
@@ -149,7 +149,7 @@ update_sequence_tool = {
                 "enum": ["23.976fps", "24fps", "25fps", "29.97fps", "30fps", "48fps", "50fps", "59.94fps", "60fps"]
             },
         },
-        "required": ["nodeId", "videoFrameHeight", "videoFrameWidth", "videoDisplayFormat"],
+        "required": ["sequenceId", "videoFrameHeight", "videoFrameWidth", "videoDisplayFormat"],
     },
 }
 
@@ -159,16 +159,16 @@ clone_sequence_tool = {
     "parameters": {
         "type": "object",
         "properties": {
-            "nodeId": {
+            "sequenceId": {
                 "type": "string",
-                "description": "The nodeId of the sequence to duplicate",
+                "description": "The sequenceId of the sequence to duplicate. NOT the nodeId",
             },
             "new_name": {
                 "type": "string",
                 "description": "The name of the new sequence. Use the suffix - Clone",
             },
         },
-        "required": ["nodeId", "new_name"],
+        "required": ["sequenceId", "new_name"],
     },
 }
 
@@ -184,7 +184,7 @@ modify_item_tool = {
         "properties": {
             "nodeId": {
                 "type": "string",
-                "description": "The nodeId of the item to move",
+                "description": "The nodeId of the item to move. NOT the sequenceId",
             },
             "new_name": {
                 "type": "string",
@@ -254,7 +254,7 @@ move_item_tool = {
             },
             "track_number": {
                 "type": "number",
-                "description": "The track number to move the item to. Starting from 0",
+                "description": "The track number to move the item to. Starting from 0 index",
             },
             "start": {
                 "type": "number",
@@ -286,10 +286,10 @@ insert_item_tool = {
                 "type": "string",
                 "description": "must be an existing nodeId in the PROJECT context. NOT the media path. NOT the timeline ID",
             },
-            "track_index": {
-                "type": "number",
-                "description": "The track index to insert the clip to. starting from 0",
-            },
+            # "track_index": {
+            #     "type": "number",
+            #     "description": "The track index to insert the clip to. starting from 0",
+            # },
             "start": {
                 "type": "number",
                 "description": "the Timeline timing to insert the clip",

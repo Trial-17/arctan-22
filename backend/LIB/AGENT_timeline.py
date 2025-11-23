@@ -25,7 +25,7 @@ from LIB.config import PENDING_JS_CALLS, MODEL_REACT_PROJECT_STRUCTURE, MODEL_RE
 from LIB.music_analysis_V2 import analyze_music
 from LIB.subtitles import main_transcription_for_agent
 from LIB.custom_llm import PremiereGPT_LLM
-from LIB.gemini_logger import log_gemini_call
+
 from LIB.AGENT_project import get_project_structure
 from LIB.config import EDIT_TIMELINE_STRUCTURE_TOOL_LIST
 
@@ -51,6 +51,38 @@ def get_mogrt_path():
         raise FileNotFoundError(f"MOGRT file not found at: {mogrt_path}")
     
     return str(mogrt_path)
+
+def gptoss_call(prompt, system_instruction, structured_output = None, tool_list = None, temperature= 0.2,  model = "openai/gpt-oss-120b"): 
+
+
+    try : 
+        payload = {
+            "prompt": str(prompt),
+            "system_instruction": str(system_instruction),
+            "temperature": temperature,
+            "model": model, 
+            "structured_output": structured_output
+        }
+
+
+        response = requests.post(
+            f"{config.API_URL}/gpt-call",
+            json=payload,
+            headers={"Authorization": f"Bearer {config.AGENT_TOKEN}"}
+        )
+
+        # Vérifier le statut de la réponse
+        if response.status_code != 200:
+            raise Exception(f"Erreur API (status {response.status_code}): {response.text}")
+        
+        # Extraire le résultat
+        result = response.json().get("result")
+        
+        return result
+    
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
+        raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 
 
 
@@ -160,13 +192,13 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
         # Extraire le résultat
         result = response.json().get("result")
         
-        log_gemini_call("agent.py::gemini_call", payload, result)  # LOG
+
         
         # Retourner le résultat dans le même format que l'ancienne fonction
         return result
         
     except requests.exceptions.RequestException as e:
-        log_gemini_call("agent.py::gemini_call", payload if 'payload' in locals() else {}, None, str(e))  # LOG
+
         print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
         raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 
@@ -1006,7 +1038,7 @@ async def open_timeline(timeline_name: str):
         ### TASKS:
         - Analyse the project architecture and the user prompt
         - Select the right timeline to open
-        - Return the nodeId of the timeline
+        - Return the sequenceId of the timeline
         
         ### PROJECT
         {project_V0}
@@ -1017,18 +1049,18 @@ async def open_timeline(timeline_name: str):
         structured_output = {
             "type": "object",
             "properties": {
-                "nodeId": {"type": "string", "description": "The nodeId of the timeline to open"}
+                "sequenceId": {"type": "string", "description": "The sequenceId of the timeline to open. NOT the nodeId"}
             },
-            "required": ["nodeId"],
+            "required": ["sequenceId"],
         }
         
-        nodeId = gemini_call(timeline_name, system_instruction, structured_output, None, 0.2, "gemini-2.5-flash-lite" )['nodeId']
+        sequenceId = gemini_call(timeline_name, system_instruction, structured_output, None, 0.2, "gemini-2.5-flash-lite" )['sequenceId']
         
         
         # 2. Appel du script pour ouvrir la timeline
         call_id = str(uuid.uuid4())
         
-        script = f"$._MYFUNCTIONS.activateSequenceById('{nodeId}');"
+        script = f"$._MYFUNCTIONS.activateSequenceById('{sequenceId}');"
         
         PENDING_JS_CALLS[call_id] = {
             "args": {"script": script},
@@ -1706,7 +1738,9 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                 """.strip()
 
             # Appel au LLM pour le reasoning
-            decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
+            # decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
+            decision = gptoss_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, "openai/gpt-oss-120b")
+
 
             liste_actions = decision.get('actions', [])
             reasoning = decision.get('reasoning', 'Task completed')
@@ -1837,7 +1871,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                         start_decimal_inf = max(x for x in liste_TC if x <= start_decimal)
                         action["args"]["start"] = action["args"]["start"] - start_decimal + start_decimal_inf
                         
-                        if action["args"]["end"]:
+                        if action["args"].get("end"):
                             end_decimal = action["args"]["end"] % 1
                             end_decimal_inf = max(x for x in liste_TC if x <= end_decimal)
                             action["args"]["end"] = action["args"]["end"] - end_decimal + end_decimal_inf
@@ -1854,8 +1888,8 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                         start_decimal = action["args"]["start"] % 1
                         start_decimal_inf = max(x for x in liste_TC if x <= start_decimal)
                         action["args"]["start"] = action["args"]["start"] - start_decimal + start_decimal_inf
-                        
-                        if action["args"]["end"]:
+
+                        if action["args"].get("end"):
                             end_decimal = action["args"]["end"] % 1
                             end_decimal_inf = max(x for x in liste_TC if x <= end_decimal)
                             action["args"]["end"] = action["args"]["end"] - end_decimal + end_decimal_inf
@@ -1917,9 +1951,17 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             # === PHASE 4: EST CE QUE LE USER PROMPT EST FINIT ?  ====================================================
             
             structured_output = {
-                "type": "boolean",
-                "description": "True if the user's request is fully completed and no more actions are needed"
-            }
+                "type": "object",
+                "properties": {
+                    "task_completed": {
+                        "type": "boolean",
+                        "description": "True if the user's request is fully completed and no more actions are needed"
+                    }
+                },
+                "required": ["task_completed"]
+            } 
+
+
             system_instruction = """
             You are a professional video editor on Premiere Pro in a ReACT Agent framework. You are after the Reasoning and Acting phases.
             Your task is to decide if the USER PROMPT is fully completed. If True, the edit will stop here. If false, the agent will continue to perform the next batch of actions planned.
@@ -1938,7 +1980,8 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             OBSERVATION: {observation}
             """.strip()
             
-            task_completed = gemini_call(final_prompt, system_instruction, structured_output, None, 0.2, MODEL_REACT_PROJECT_STRUCTURE)
+            # task_completed = gemini_call(final_prompt, system_instruction, structured_output, None, 0.2, MODEL_REACT_PROJECT_STRUCTURE)
+            task_completed = gptoss_call(final_prompt, system_instruction, structured_output, None, 0.2, "openai/gpt-oss-120b").get("task_completed", False)
 
             if task_completed:
                 if iteration == 1 and not liste_actions:

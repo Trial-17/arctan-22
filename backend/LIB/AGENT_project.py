@@ -24,7 +24,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from LIB.music_analysis_V2 import analyze_music
 from LIB.subtitles import main_transcription_for_agent
 from LIB.custom_llm import PremiereGPT_LLM
-from LIB.gemini_logger import log_gemini_call
+
 
 
 def format_agent_history(agent_history):
@@ -55,7 +55,7 @@ def format_agent_history(agent_history):
 MODEL_CONTEXT_1 = "gemini-2.5-flash-lite" # Get Project Context
 
 
-def gemini_call(prompt, system_instruction, structured_output = None, tool_list = None, temperature= 0.1,  model = "gemini-2.5-flash-lite"): 
+def gemini_call(prompt, system_instruction, structured_output = None, tool_list = None, temperature= 0.2,  model = "gemini-2.5-flash-lite"): 
     """
     Appelle l'API Gemini via l'API relai.
     Conserve la même interface et le même comportement que l'ancienne fonction.
@@ -97,19 +97,49 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
         # Extraire le résultat
         result = response.json().get("result")
         
-        log_gemini_call("agent.py::gemini_call", payload, result)  # LOG
+
         
         # Retourner le résultat dans le même format que l'ancienne fonction
         return result
         
     except requests.exceptions.RequestException as e:
-        log_gemini_call("agent.py::gemini_call", payload if 'payload' in locals() else {}, None, str(e))  # LOG
         print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
         raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 
 
+def gptoss_call(prompt, system_instruction, structured_output = None, tool_list = None, temperature= 0.2,  model = "openai/gpt-oss-120b"): 
 
 
+    try : 
+        payload = {
+            "prompt": str(prompt),
+            "system_instruction": str(system_instruction),
+            "temperature": temperature,
+            "model": model, 
+            "structured_output": structured_output
+        }
+
+
+        response = requests.post(
+            f"{config.API_URL}/gpt-call",
+            json=payload,
+            headers={"Authorization": f"Bearer {config.AGENT_TOKEN}"}
+        )
+
+        # Vérifier le statut de la réponse
+        if response.status_code != 200:
+            raise Exception(f"Erreur API (status {response.status_code}): {response.text}")
+        
+        # Extraire le résultat
+        result = response.json().get("result")
+        
+        return result
+    
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
+        raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
+
+        
 
 
 
@@ -794,8 +824,6 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                 2. You can only delete a bin if it is empty (no items inside); move items to an existing bin before deleting a bin
                 3. you can only create a bin in an existing bin, so you can decompose you action in multiple tours if required in this specific case
 
-                ### EXAMPLE RESPONSE:
-                {json.dumps(structured_output, indent=2)}
                 """.strip()
             
             system_instruction = f"""
@@ -821,7 +849,8 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
 
         
             # Appel au LLM pour le reasoning
-            decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
+            # decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
+            decision = gptoss_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, "openai/gpt-oss-120b")
 
             liste_actions = decision.get('actions', [])
             reasoning = decision.get('reasoning', 'No actions planned')
@@ -861,6 +890,7 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
             
             
             # Gestion du preset pour les séquences
+            liste_actions = sorted(liste_actions, key=lambda x: x["name"] in ["delete_bin"])
             for action in liste_actions:
                 print(action)
                 if action.get("name") == "create_sequence":
@@ -948,7 +978,6 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                 break
             
 
-            
             # === PHASE 3: OBSERVATION ===
             config.API_STATUS = f"Observing changes... (iteration {iteration})"
             
@@ -972,15 +1001,20 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
 
             # === PHASE 4: EST CE QUE LE USER PROMPT EST FINIT ?  =========================================================
             structured_output = {
-                "type": "boolean",
-                "description": "True if the user's request is fully completed and no more actions are needed"
-            }
+                "type": "object",
+                "properties": {
+                    "task_completed": {
+                        "type": "boolean",
+                        "description": "True if the user's request is fully completed and no more actions are needed"
+                    }
+                },
+                "required": ["task_completed"]
+            } 
 
             system_instruction = """
                 You are a professional video editor on Premiere Pro in a ReACT Agent framework. You are after the Reasoning and Acting phases.
                 Your task is to decide if the USER PROMPT is fully completed. If True, the edit will stop here. If false, the agent will continue to perform the next batch of actions planned.
                 You receive the USER PROMPT, the project structure before and after the actions, the list of actions performed and the observation of the actions.
-
                 """.strip()
 
             final_prompt = f"""
@@ -989,9 +1023,10 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                 PROJECT STRUCTURE AFTER: {post_action_structure}
                 LIST OF PERFORMED ACTIONS: {[iteration["actions"] for iteration in history]}
                 OBSERVATION: {[iteration["JSX_observation"] for iteration in history]}
+
                 """.strip()
             
-            task_completed = gemini_call(final_prompt, system_instruction, structured_output, None, 0.2, MODEL_REACT_PROJECT_STRUCTURE)
+            task_completed = gptoss_call(final_prompt, system_instruction, structured_output, None, 0.2, "openai/gpt-oss-120b").get("task_completed", False)
 
             if task_completed:
                 if iteration == 1 and not liste_actions:
@@ -1137,10 +1172,16 @@ async def labelize_audio(audioType: str, audioName: str):
         if audioType == "music":
             downbeats, beats, json_path = analyze_music(audio_path)
         elif audioType == "speech":
+
+
+            project_root = Path(__file__).parent.parent.parent.parent
+            source_preset = project_root / "render" / "Audio_ForTranscriptionV2.epr"
+
+
             
             # 2.1. Récupération du path de l'audio
             call_id = str(uuid.uuid4())
-            script = f"$._MYFUNCTIONS.AGENT_SPEECH_labelizeAudio('{nodeId}');"
+            script = f"$._MYFUNCTIONS.AGENT_SPEECH_labelizeAudio('{nodeId}', '{source_preset}');"
             PENDING_JS_CALLS[call_id] = {
                 "args": {"script": script},
                 "result": None,

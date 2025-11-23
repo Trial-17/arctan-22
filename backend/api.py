@@ -11,7 +11,7 @@ from starlette.responses import StreamingResponse
 import time
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import uvicorn
 import requests
@@ -43,7 +43,7 @@ def reset_shutdown_timer():
     global last_activity
     with shutdown_lock:
         last_activity = time.time()
-        # print(f"🔄 Timer d'inactivité réinitialisé. Prochain arrêt dans {inactivity_timeout}s")
+    print(f"🔄 Timer d'inactivité réinitialisé. Prochain arrêt dans {inactivity_timeout}s")
 
 def shutdown_after_timeout():
     """Thread qui surveille l'inactivité et arrête l'API après le timeout."""
@@ -56,21 +56,36 @@ def shutdown_after_timeout():
             time_since_last_activity = now - last_activity
         
         if time_since_last_activity >= inactivity_timeout:
-            # print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
+            print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
             os.kill(os.getpid(), signal.SIGINT)
             return
         
         # Log périodique pour vérifier que le thread fonctionne (toutes les 5 minutes)
         if int(time_since_last_activity) % 300 == 0 and int(time_since_last_activity) > 0:
             remaining = int(inactivity_timeout - time_since_last_activity)
-            # print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
+            print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
         
         time.sleep(CHECK_INTERVAL_SECONDS)
 
-# Démarrage du thread de surveillance
-threading.Thread(target=shutdown_after_timeout, daemon=True).start()
+
 
 app = FastAPI(version="2.0.0",)
+
+@app.on_event("startup")
+def start_shutdown_monitor():
+    """Démarre le thread de surveillance uniquement au lancement de l'app (worker)."""
+    threading.Thread(target=shutdown_after_timeout, daemon=True).start()
+
+# Middleware pour tracker automatiquement toutes les requêtes
+@app.middleware("http")
+async def track_activity_middleware(request: Request, call_next):
+    """
+    Middleware qui met à jour le timestamp à chaque requête HTTP.
+    Cela permet d'éviter d'appeler manuellement reset_shutdown_timer() dans chaque endpoint.
+    """
+    reset_shutdown_timer()
+    response = await call_next(request)
+    return response
 
 
 
@@ -79,7 +94,6 @@ app = FastAPI(version="2.0.0",)
 
 @app.get("/status")
 def status():
-    reset_shutdown_timer()
     return {"status": config.API_STATUS}
 
 @app.post("/stop-agent")
@@ -88,7 +102,6 @@ def stop_agent():
     Endpoint pour arrêter l'agent en cours d'exécution.
     Met le flag STOP_REQUESTED à True.
     """
-    reset_shutdown_timer()
     config.STOP_REQUESTED = True
     config.API_STATUS = "End"
     return {"status": "stop_requested"}
@@ -111,7 +124,6 @@ async def get_exposed_function():
     Polled by the JS client to check for functions to execute.
     Returns the first pending function found.
     """
-    reset_shutdown_timer()
     for call_id, data in PENDING_JS_CALLS.items():
         if data["status"] == "pending":
             data["status"] = "running"
@@ -130,7 +142,6 @@ async def receive_result(request: ResultRequest):
     """
     Called by the JS client to post the result of a function execution.
     """
-    reset_shutdown_timer()
     if request.call_id in PENDING_JS_CALLS:
         PENDING_JS_CALLS[request.call_id]["result"] = request.result
         PENDING_JS_CALLS[request.call_id]["status"] = "completed"
@@ -151,7 +162,6 @@ async def stream_chat(request: StreamChatRequest):
     Endpoint de chat qui retourne une réponse en streaming de l'agent
     et gère l'historique de la conversation.
     """
-    reset_shutdown_timer()
     # Réinitialiser le flag de stop au début de chaque requête
     config.STOP_REQUESTED = False
     print(f"--- Requête reçue sur /stream-chat avec le prompt: '{request.prompt}' et le modèle: '{request.model}' ---")
@@ -236,7 +246,6 @@ class PodcastRequest(BaseModel):
 
 @app.post("/podcast")
 def podcast(request: PodcastRequest):
-    reset_shutdown_timer()
     file_paths = request.paths
     front_data = request.front_data
     token = request.token
@@ -261,7 +270,6 @@ def podcast(request: PodcastRequest):
 
 @app.get("/podcast-results")
 def get_podcast_results():
-    reset_shutdown_timer()
     if config.API_STATUS != "End":
         return {"error": "Not ready"}
 
@@ -287,7 +295,6 @@ class GenerationRequest(BaseModel):
 
 @app.post("/generation")
 def generation(request: GenerationRequest):
-    reset_shutdown_timer()
     try:
         print(request.input)
         result = main_generation(request.input, request.token)
@@ -317,7 +324,6 @@ class PromptEnhancementRequest(BaseModel):
     
 @app.post("/prompt-enhancement")
 def prompt_enhancement(request: PromptEnhancementRequest):
-    reset_shutdown_timer()
     result = get_enhanced_prompt(request.prompt, request.token, request.outputType)
     return {"result": result}
 
@@ -345,7 +351,6 @@ def jump_cut_preview(request: JumpCutPreviewRequest):
     """
     Génère un aperçu pour la fonctionnalité Jump Cut en utilisant la fonction d'analyse.
     """
-    reset_shutdown_timer()
     print(f"Received jump cut preview request with params: {request}")
 
     try:
@@ -397,7 +402,6 @@ class SubtitlesRequest(BaseModel):
     
 @app.post("/subtitles")
 def subtitles(request: SubtitlesRequest):
-    reset_shutdown_timer()
     config.API_STATUS = "Subtitles"
     print(f"Received subtitles request with params: {request}")
     try:
@@ -423,7 +427,6 @@ def subtitles(request: SubtitlesRequest):
 
 @app.get("/subtitles-results")
 def get_subtitles_results():
-    reset_shutdown_timer()
     if config.API_STATUS == "End":
         return config.RESULTS
     elif config.API_STATUS == "Error":
@@ -452,7 +455,6 @@ def audio_research(request: AudioResearchRequest):
     """
     Recherche audio dans un dossier donné.
     """
-    reset_shutdown_timer()
     try:
         result = main_find_passages(request.audio_path, request.token, request.model, request.prompt)
         return result
@@ -485,10 +487,10 @@ class EndpointFilter(logging.Filter):
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 
-if __name__ == "__main__":
-    from api import app
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+# if __name__ == "__main__":
+#     from api import app
+#     uvicorn.run(app, host="127.0.0.1", port=8000)
         
 
-# if __name__ == "__main__":
-#     uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
+if __name__ == "__main__":
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)

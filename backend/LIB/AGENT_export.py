@@ -26,7 +26,7 @@ from LIB.config import PENDING_JS_CALLS, MODEL_REACT_PROJECT_STRUCTURE, MODEL_RE
 from LIB.music_analysis_V2 import analyze_music
 from LIB.subtitles import main_transcription_for_agent
 from LIB.custom_llm import PremiereGPT_LLM
-from LIB.gemini_logger import log_gemini_call
+
 from LIB.AGENT_project import get_project_structure
 from LIB.config import EDIT_TIMELINE_STRUCTURE_TOOL_LIST
 
