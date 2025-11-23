@@ -43,7 +43,7 @@ def reset_shutdown_timer():
     global last_activity
     with shutdown_lock:
         last_activity = time.time()
-    print(f"🔄 Timer d'inactivité réinitialisé. Prochain arrêt dans {inactivity_timeout}s")
+    # print(f"🔄 Timer d'inactivité réinitialisé. Prochain arrêt dans {inactivity_timeout}s")
 
 def shutdown_after_timeout():
     """Thread qui surveille l'inactivité et arrête l'API après le timeout."""
@@ -56,14 +56,14 @@ def shutdown_after_timeout():
             time_since_last_activity = now - last_activity
         
         if time_since_last_activity >= inactivity_timeout:
-            print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
+            # print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
             os.kill(os.getpid(), signal.SIGINT)
             return
         
         # Log périodique pour vérifier que le thread fonctionne (toutes les 5 minutes)
         if int(time_since_last_activity) % 300 == 0 and int(time_since_last_activity) > 0:
             remaining = int(inactivity_timeout - time_since_last_activity)
-            print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
+            # print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
         
         time.sleep(CHECK_INTERVAL_SECONDS)
 
