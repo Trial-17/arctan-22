@@ -278,13 +278,16 @@ async def main_fast_labelize(list_clip):
 
 class GetProjectStructure(BaseModel):
     include_metadata :bool = Field(default=False, description="Use it only if you need to know the description of the video and images to perform the task. Slower")
+    include_audio :bool = Field(default=False, description="Use it only if you need to know the downbeats of the audio to perform the task. Slower")
+    skip_labelize :bool = Field(default=False, description="If True, skip the labelization process")
  
 @tool("get_project_structure", args_schema=GetProjectStructure)
-async def get_project_structure(include_metadata: bool = False, skip_labelize: bool = False):
+async def get_project_structure(include_metadata: bool = False, skip_labelize: bool = False, include_audio: bool = False):
     """
     Returns the JSON structure of the Premiere Pro project
     Usefull ot get the availables clips, musics, audio, folders
     """
+
     try : 
         call_id = str(uuid.uuid4())
 
@@ -410,16 +413,31 @@ async def get_project_structure(include_metadata: bool = False, skip_labelize: b
                 if include_metadata and item_type in ['Video', 'Image'] and item['mediaPath'] in metadata_map:
                     meta = metadata_map[item['mediaPath']]
                     item['metadata'] = {
-                        "description": meta.get("description"),
-                        "camera_angle": meta.get("camera_angle"),
-                        "colors": meta.get("colors"),
-                        "people": meta.get("people")
+                        "description": meta.get("description", ""),
+                        "camera_angle": meta.get("camera_angle", ""),
+                        "colors": meta.get("colors", ""),
+                        "people": meta.get("people", "")
                     }
-                elif item_type == 'Audio' and item['mediaPath'] in metadata_map:
+
+                elif item_type in ['Video'] and item['mediaPath'] in metadata_map: 
                     meta = metadata_map[item['mediaPath']]
-                    item['metadata'] = {
-                        "downbeats": meta.get("downbeats", None)
-                    }
+                    if meta.get("transcription",None) :
+                        item['metadata'] = {
+                            "segments": meta.get("transcription", None)["segments"]
+                        }
+
+                elif item_type == 'Audio'  and include_audio and item['mediaPath'] in metadata_map:
+
+                    meta = metadata_map[item['mediaPath']]
+                    if meta.get("downbeats",None):
+                        item['metadata'] = {
+                            "downbeats": meta.get("downbeats", None)
+                        }
+                    if meta.get("transcription",None):
+                        item['metadata'] = {
+                            "transcription": meta.get("transcription")["segments"]
+                        }
+
                 
                 if 'children' in item and isinstance(item['children'], list):
                     for child in item['children']:
@@ -440,101 +458,6 @@ async def get_project_structure(include_metadata: bool = False, skip_labelize: b
         print(f"Erreur get_project_structure: {str(e)}")
         return "Error: " + str(e)
 
-async def get_project_context(prompt: str, include_metadata: bool = False):
-    
-    
-    config.API_STATUS = "Getting project context..."
-
-    # 1. Récupération de la structure du projet
-    project_V0 = await get_project_structure.ainvoke({"include_metadata": include_metadata})
-    
-
-    # 2. Déterminer le contexte a envoyer
-    full_prompt = f"""    
-    ### JSON project :
-    {project_V0}
-    
-    ### User prompt : 
-    {prompt}
-        """.strip()
-
-    system_instruction="""
-    You are a professional video editor. You receive a JSON representation of the project architecture.
-    Your task is to select the right context that will be required to perform the user prompt.
-    It will be then send to an agent that will defin alist of tasks based on this context.
-
-    ### TASKS:
-    - Analyse the user prompt
-    - Select the right context that will be required to perform the user prompt and to understand the user intent
-    - Return the full list of the ids of the context or 'all' if all the context is needed
-
-    ### RULES:
-    - if you want to include a folder, include it id, not its childrens
-    - if you want to include a sequence, and audio, srt, video, image, include it id
-    - if no context is needed, return an empty list
-    - if all the context is needed, return a unique item id named "all"
-        """, 
-
-    structured_output = {
-        "type": "array",
-        "items": {
-            "type": "string",
-            "description": "The id of the bin, sequence, item to add to the context, or 'all' if all the context is needed"
-        }
-    }
-            
-    context = gemini_call(full_prompt, system_instruction, structured_output, None, 0.3, MODEL_CONTEXT_1)
-        
-
-    # 3. Retraitement du contexte : élimination des introuvés
-    final_context = []
-    processed_ids = set()  # Pour éviter les doublons
-        
-    if context:
-        # Cas spécial : si "all" est présent
-        if "all" in context:
-            project_data = json.loads(project_V0)
-            final_context = get_all_descendants(project_data, project_data.get('name', 'Project'))
-        else:
-            project_data = json.loads(project_V0)
-            
-            for item_id in context:
-                # Vérifier si déjà traité (éviter doublons)
-                if item_id in processed_ids:
-                    continue
-                
-                # Chercher l'item dans le projet
-                found_item = find_item_by_id(project_data, item_id, project_data.get('name', 'Project'))
-                
-                if found_item:
-                    processed_ids.add(item_id)
-                    
-                    # Si c'est un Bin (dossier), inclure toute la descendance
-                    if found_item.get("type") == "Bin":
-                        descendants = get_all_descendants(found_item, found_item["path"])
-                        final_context.extend(descendants)
-                        
-                        # Marquer tous les descendants comme traités pour éviter doublons
-                        def mark_descendants_processed(node):
-                            if node.get("nodeId"):
-                                processed_ids.add(node.get("nodeId"))
-                            if "children" in node:
-                                for child in node["children"]:
-                                    mark_descendants_processed(child)
-                        
-                        for desc in descendants:
-                            mark_descendants_processed(desc)
-                    else:
-                        # Pour les autres types (Sequence, Audio, Video, etc.)
-                        final_context.append(found_item)
-                else:
-                    # ID non trouvé, on l'ignore
-                    print(f"Warning: ID {item_id} not found in project")
-        
-        # print("Final context:", json.dumps(final_context, indent=2))
-    
-    return final_context
-  
 def find_item_by_id(node, target_id, current_path=""):
     """Trouve un item par son ID et retourne l'item avec son path"""
     # Vérifier si le noeud actuel a l'ID recherché
@@ -757,7 +680,7 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
             
 
             config.API_STATUS = "Getting project structure..."
-            current_structure = await get_project_structure.ainvoke({"include_metadata": False})
+            current_structure = initial_structure if iteration == 1 else post_action_structure
             
             # === PHASE 1: REASONING ======================================================
             config.API_STATUS = f"Thinking... (iteration {iteration})"
@@ -849,12 +772,15 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
 
         
             # Appel au LLM pour le reasoning
-            # decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
-            decision = gptoss_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, "openai/gpt-oss-120b")
+            decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
+            # decision = gptoss_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, "openai/gpt-oss-120b")
 
             liste_actions = decision.get('actions', [])
             reasoning = decision.get('reasoning', 'No actions planned')
             
+            if config.REASONING_QUEUE:
+                await config.REASONING_QUEUE.put(reasoning)
+
             print(f"💭 Reasoning: {reasoning}")
 
             # Cas 2 : Pas d'actions mais tâche non complétée = problème
@@ -984,7 +910,7 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
             # Récupérer la structure après les actions
             time.sleep(1)
             post_action_structure = await get_project_structure.ainvoke({"include_metadata": False})
-            differences, observation = compare_project_structures(current_structure, post_action_structure)
+            differences, observation = compare_project_structures(initial_structure, post_action_structure)
             
             print(f"📊 Observation: {observation}")
             
@@ -1006,28 +932,41 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                     "task_completed": {
                         "type": "boolean",
                         "description": "True if the user's request is fully completed and no more actions are needed"
+                    }, 
+                    "reasoning": {
+                        "type": "string",
+                        "description": "Explaination of the decision. If False, explain what is missing or incorrect to the Acting Agent so it can correct it."
                     }
                 },
-                "required": ["task_completed"]
+                "required": ["task_completed", "reasoning"]
             } 
+
 
             system_instruction = """
                 You are a professional video editor on Premiere Pro in a ReACT Agent framework. You are after the Reasoning and Acting phases.
                 Your task is to decide if the USER PROMPT is fully completed. If True, the edit will stop here. If false, the agent will continue to perform the next batch of actions planned.
                 You receive the USER PROMPT, the project structure before and after the actions, the list of actions performed and the observation of the actions.
+                
+                You must follow the EXCEPTIONS below:
+                ### EXCEPTIONS: 
+                - sometimes the fps or framerate of a sequence is not well updated. If it's the only difference, you can ignore it and consider the task completed.
+                - a sequence has no DURATION parameters. So if the user is asking for, you can ignore that
+                
                 """.strip()
 
             final_prompt = f"""
                 USER PROMPT: {prompt}
-                PROJECT STRUCTURE BEFORE: {initial_structure}
-                PROJECT STRUCTURE AFTER: {post_action_structure}
+                PROJECT STRUCTURE INITIAL: {initial_structure}
+                PROJECT STRUCTURE POST ACTIONS: {post_action_structure}
                 LIST OF PERFORMED ACTIONS: {[iteration["actions"] for iteration in history]}
                 OBSERVATION: {[iteration["JSX_observation"] for iteration in history]}
 
                 """.strip()
             
-            task_completed = gptoss_call(final_prompt, system_instruction, structured_output, None, 0.2, "openai/gpt-oss-120b").get("task_completed", False)
-
+            result_phase_4 = gptoss_call(final_prompt, system_instruction, structured_output, None, 0.2, "openai/gpt-oss-120b")
+            task_completed = result_phase_4.get("task_completed", False)
+            reasoning_phase_4 = result_phase_4.get("reasoning", "")
+            print("Reasoning Completion : " + reasoning_phase_4)
             if task_completed:
                 if iteration == 1 and not liste_actions:
                     return f"OBSERVATION: Task already completed. {reasoning}"
@@ -1146,8 +1085,6 @@ async def labelize_audio(audioType: str, audioName: str):
         if found_item:
             audio_path = found_item.get("mediaPath")
             
-            # Si l'audio Path est un mp4 : il faut le transcrire en mp3
-            #@TODO : a raccorder
             
             # chercher dans index si on l'a déjà labelisé ou pas
             if audio_path:
@@ -1156,11 +1093,11 @@ async def labelize_audio(audioType: str, audioName: str):
                         clip_found = item
                         if audioType == "music":
                             if "downbeats" in item or "beats" in item:
-                                return "Music already labeled"
+                                return str("Downbeats : " + str(item["downbeats"]) )
 
                         elif audioType == "speech":
                             if "transcription" in item:
-                                return "Speech already labeled"
+                                return str("transcription : " + str(item["transcription"]["segments"]))
                         break
         
         # Vérifier si l'audio a été trouvé
@@ -1176,6 +1113,9 @@ async def labelize_audio(audioType: str, audioName: str):
 
             project_root = Path(__file__).parent.parent.parent.parent
             source_preset = project_root / "render" / "Audio_ForTranscriptionV2.epr"
+
+            if not source_preset.exists():
+                source_preset = Path("/Library/Application Support/Adobe/CEP/extensions/PremiereGPTBeta/js/libs/render/Audio_ForTranscriptionV2.epr")
 
 
             
@@ -1200,8 +1140,8 @@ async def labelize_audio(audioType: str, audioName: str):
                 del PENDING_JS_CALLS[call_id]
             if result is None:
                 return "Error: Timed out waiting for JavaScript function to execute."
-            audio_path = result
-            transcription = main_transcription_for_agent(audio_path, config.AGENT_TOKEN) 
+            audio_path_temp = result
+            transcription = main_transcription_for_agent(audio_path_temp, config.AGENT_TOKEN) 
         # print(f"Transcription: {transcription}")
 
         # 3. Ajout aux metadata du projet
@@ -1213,7 +1153,6 @@ async def labelize_audio(audioType: str, audioName: str):
                     item["json_path"] = json_path
                 elif audioType == "speech":
                     item["transcription"] = transcription
-                    item["json_path"] = json_path
                 break
         
 
@@ -1253,9 +1192,24 @@ async def labelize_audio(audioType: str, audioName: str):
         with open(path_clip_db, 'w', encoding='utf-8') as f:
             json.dump(clip_db, f, indent=2, ensure_ascii=False)
     except Exception as e:
-        print(f"Erreur labelize_audio: {str(e)}")
-        return "Error: " + str(e)
-    return "done"
+        import traceback
+        tb = traceback.extract_tb(e.__traceback__)
+        if tb:
+            log_lignes = []
+            for trace in tb:
+                log_lignes.append(f"Fichier \"{trace.filename}\", ligne {trace.lineno}, dans {trace.name}")
+            log_complet = "\n".join(log_lignes)
+            message = f"Erreur labelize audio: {str(e)}\nTraceback complet :\n{log_complet}"
+        else:
+            message = f"Erreur labelize audio: {str(e)}"
+        print(message)
+        return "Error: " + message
+
+
+
+
+
+    return str( "Downbeats : " + str( clip_found["downbeats"] ) )if audioType == "music" else str( "Transcription : " + str( clip_found["transcription"]["segments"]))
 
 
 

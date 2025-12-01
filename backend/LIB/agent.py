@@ -25,7 +25,7 @@ from LIB.music_analysis_V2 import analyze_music
 from LIB.subtitles import main_transcription_for_agent
 from LIB.custom_llm import PremiereGPT_LLM
 from LIB.AGENT_project import get_project_structure, edit_project_structure, labelize_audio
-from LIB.AGENT_timeline import get_timeline_structure, edit_timeline_structure, open_timeline
+from LIB.AGENT_timeline import get_timeline_structure, edit_timeline, open_timeline
 from LIB.AGENT_export import export_sequence
 
 MODEL_CONTEXT_1 = "gemini-2.5-flash-lite" # Get Project Context
@@ -48,7 +48,7 @@ TOOL_DISPLAY_MAPPING = {
         "title": "Grepping timeline",
         "category": "extendscript"
     },
-    "edit_timeline_structure": {
+    "edit_timeline": {
         "title": "Editing timeline",
         "category": "extendscript"
     }, 
@@ -246,7 +246,7 @@ class AgentState(TypedDict):
 def create_agent_graph(model_name: str = "fast"):
 
     tools = [get_project_structure, edit_project_structure, 
-             get_timeline_structure, edit_timeline_structure, 
+             get_timeline_structure, edit_timeline, 
              open_timeline,
              labelize_audio,
              get_creative_todo, 
@@ -262,10 +262,14 @@ def create_agent_graph(model_name: str = "fast"):
     model = model.bind_tools(tools)
     
     def agent(state: AgentState):
+        if config.STOP_REQUESTED:
+            return {"messages": [AIMessage(content="Agent stopped by user.")]}
         response = model.invoke(state["messages"])
         return {"messages": [response]}
     
     def should_continue(state: AgentState) -> str:
+        if config.STOP_REQUESTED:
+            return "end"
         if not state["messages"][-1].tool_calls:
             return "end"
         return "continue"
@@ -288,36 +292,36 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
     # --- Gestion de l'historique ---
     conversation_history = [
         SystemMessage(content="""
-        You are a an expert in Video Editing and a ReAct Agent Orchestrator.
-        You can use the tools to perform actions in Adobe Premiere Pro, 
-        After each tool call, evaluate the result before proceeding to the next step.
-        
-        ### IF YOU MISS INFORMATION: 
-        - 1. Try to get project or timeline structure to guess the user information
-        - 2. If it's not sufficient, ask to the user if need to provide more information
+        You are an expert Video Editing Orchestrator for Premiere Pro.
+        Your role is to understand the user's request and delegate the work to the appropriate specialized agent.
 
-        
-        ### RULES
-        - edit_timeline_structure and edit_project_structure are ReAct Agent tools. Simply give them the user prompt part that is related to the tool and choose carefully the other arguments. They will decompose the task into multiple steps and perform them.
-        
-        
-        ### EXEMPLE 0:
-        USER PROMPT: "make an edit"
-        1. Get the project structure, and analyse the project to identify the clips and audio to use for the edit (get_project_structure)
-        2. Create a new sequence for the edit with appropriate format (edit_project_structure)
-        3. Add audio and Broll to this sequence (edit_timeline_structure)
-        4. Add text and effects if needed (edit_timeline_structure)
+        ### YOUR TEAM OF EXPERTS:
+        1.  **edit_project_structure**: Expert in organizing the project bin. Use it to create sequences, bins, or organize items.
+        2.  **edit_timeline**: The MASTER EDITOR. Capable of handling FULL editing tasks. It can add clips, music, text, effects, and adjust timing ALL IN ONE SESSION. He has his own access to get project structure and timeline structure. So no Need to send it to the agent.
+        3.  **get_project_structure** / **get_timeline_structure**: Analysts to retrieve information when you are unsure.
+        4.  **export_sequence**: Finalizer to export the result. 
 
-        
-        ### EXEMPLE 1: 
-        USER PROMPT: "create a reel from this edit"
-        1. Get the timeline structure, and analyse the timeline to identify the clips and moments to use for the reel
-        2. Create a new seqeunce for instagram reel
-        3. Add audio and Broll to this sequence
-        4. Add text and effects if needed
-        
-        
- 
+        ### KEY RULES FOR DELEGATION:
+        - **DO NOT MICROMANAGE:** If the user wants a video edit, delegate the ENTIRE task to `edit_timeline` in a single call. Do not split it into "add video" then "add audio". The `edit_timeline` agent is smart enough to handle the whole flow.
+        - **PASS CONTEXT:** When calling a tool, ensure the prompt contains all necessary creative details (mood, style, pacing).
+        - **VERIFY:** After a tool finishes, check the output to ensure the user's request is met.
+
+        ### EXAMPLES:
+
+        #### Example 1: Creating a Reel 
+        **User:** "Create a dynamic reel from the 'Travel' bin with upbeat music and subtitles."
+        **You:**
+        1.  Call `get_project_structure` to see available media. And labelize required audio if needed
+        2.  Call `edit_project_structure` to create a sequence "Travel_Reel" (1080x1920).
+        3.  Call `edit_timeline` with prompt: "Create a dynamic reel using clips from 'Travel' bin. Sync to upbeat music and add subtitles." (DELEGATE EVERYTHING)
+
+
+        #### Example 2: Create a Movie
+        **User:** "create a cinmeatic film with my rush"
+        **You:**
+        1.  Call `get_project_structure` to see available media and audio to use
+        2.  Call `edit_project_structure` to create a sequence cinematic.
+        3.  Call `edit_timeline`
         """),
     ]
     
@@ -350,18 +354,17 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
     # --------------------------------
 
 
-    # for msg in conversation_history:
-        # Affichage simplifié pour éviter de surcharger les logs
-        # content_preview = str(msg.content)[:150] + '...' if len(str(msg.content)) > 150 else str(msg.content)
-        # print(f"  - [{msg.type.upper()}]: {content_preview}")
-
-
     inputs = {"messages": conversation_history}
     
     thought_accumulator = ""
     tool_call_depth = 0  # profondeur d'appel des tools; 0 = appel top-level
 
     async for chunk in app.astream_events(inputs, version="v1"):
+        if config.STOP_REQUESTED:
+            print("🛑 Agent stopped by user request.")
+            yield {"type": "thought", "content": "\n[Agent stopped by user]"}
+            break
+
         kind = chunk["event"]
         
         if kind == "on_chat_model_stream":
@@ -372,17 +375,6 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
                 print(content)
                 yield {"type": "thought", "content": content}
                 await asyncio.sleep(0.01)
-        
-        # elif kind == "on_chat_model_end":
-        #     if thought_accumulator:
-        #         # This AIMessage is the decision to call a tool, let's log it as a thought.
-        #         if 'tool_calls' in str(chunk['data']['output']): # Simple check
-        #             print(f"\n--- [THOUGHT] Agent decides to call a tool ---")
-        #         else:
-        #             print(f"\n--- [THOUGHT] Agent's thought process ---")
-
-        #         print("------------------------------------------")
-        #         thought_accumulator = ""
 
         elif kind == "on_tool_start":
             tool_name = chunk["name"]
@@ -420,16 +412,3 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
                     "type": "tool_end",
                     "title": tool_info["title"]
                 }
-
-        # elif kind == "on_chain_end":
-        #     if chunk["name"] == "LangGraph":
-        #         output = chunk.get("data", {}).get("output")
-        #         if output and isinstance(output, dict) and "messages" in output:
-        #             messages = output["messages"]
-        #             if messages and isinstance(messages, list):
-        #                 final_answer = messages[-1].content
-        #                 print(f"\n--- [FINAL ANSWER] ---")
-        #                 print(final_answer)
-        #                 print("----------------------")
-        #                 config.API_STATUS = "End"
-        #                 yield {"type": "answer", "content": final_answer}

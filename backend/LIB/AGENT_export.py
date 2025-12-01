@@ -72,13 +72,13 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
         # Extraire le résultat
         result = response.json().get("result")
         
-        log_gemini_call("agent.py::gemini_call", payload, result)  # LOG
+
         
         # Retourner le résultat dans le même format que l'ancienne fonction
         return result
         
     except requests.exceptions.RequestException as e:
-        log_gemini_call("agent.py::gemini_call", payload if 'payload' in locals() else {}, None, str(e))  # LOG
+
         print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
         raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 

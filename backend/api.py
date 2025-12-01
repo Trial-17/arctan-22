@@ -75,6 +75,7 @@ app = FastAPI(version="2.0.0",)
 def start_shutdown_monitor():
     """Démarre le thread de surveillance uniquement au lancement de l'app (worker)."""
     threading.Thread(target=shutdown_after_timeout, daemon=True).start()
+    config.REASONING_QUEUE = asyncio.Queue()
 
 # Middleware pour tracker automatiquement toutes les requêtes
 @app.middleware("http")
@@ -174,30 +175,67 @@ async def stream_chat(request: StreamChatRequest):
         if not request.conversation_id:
             yield json.dumps({"type": "conversation_start", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
 
-        # L'agent va maintenant yield des dictionnaires qu'on transforme en JSON
         full_response_content = ""
-        # Accumulation progressive du texte streamé (événements "thought") au cas où l'"answer" final serait vide
         streamed_text_accumulator = ""
         tool_calls = []
 
-        async for item in run_agent_streaming(request.prompt, history, request.token, request.model):
-            # On stream l'item au client
-            yield json.dumps(item, ensure_ascii=False) + "\n"
-            
-            # On accumule le contenu pour la mémoire
-            item_type = item.get("type")
-            if item_type == "answer":
-                # Réponse finale si fournie par l'agent (peut être vide selon les cas)
-                content = item.get("content", "")
-                if content:
-                    full_response_content = content
-            elif item_type == "thought":
-                # Contenu streamé (morceaux de texte) : on les cumule en secours
-                streamed_text_accumulator += item.get("content", "")
-            elif item_type == "tool_start":
-                 # Simplification: on ne stocke que le nom de l'outil appelé pour l'instant
-                 tool_calls.append({"name": item.get("title"), "args": item.get("args")})
+        # Ensure queue exists and is clear
+        if config.REASONING_QUEUE is None:
+            config.REASONING_QUEUE = asyncio.Queue()
+        while not config.REASONING_QUEUE.empty():
+            try:
+                config.REASONING_QUEUE.get_nowait()
+            except asyncio.QueueEmpty:
+                break
 
+        agent_stream_queue = asyncio.Queue()
+
+        async def run_agent_task():
+            try:
+                async for item in run_agent_streaming(request.prompt, history, request.token, request.model):
+                    await agent_stream_queue.put(item)
+            except Exception as e:
+                print(f"Error in agent task: {e}")
+            finally:
+                await agent_stream_queue.put(None)
+
+        asyncio.create_task(run_agent_task())
+
+        agent_task = asyncio.create_task(agent_stream_queue.get())
+        reasoning_task = asyncio.create_task(config.REASONING_QUEUE.get())
+
+        while True:
+            done, pending = await asyncio.wait(
+                [agent_task, reasoning_task], 
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+            if agent_task in done:
+                item = agent_task.result()
+                if item is None:
+                    reasoning_task.cancel()
+                    break
+                
+                # Yield item
+                yield json.dumps(item, ensure_ascii=False) + "\n"
+                
+                # Accumulation logic
+                item_type = item.get("type")
+                if item_type == "answer":
+                    content = item.get("content", "")
+                    if content:
+                        full_response_content = content
+                elif item_type == "thought":
+                    streamed_text_accumulator += item.get("content", "")
+                elif item_type == "tool_start":
+                     tool_calls.append({"name": item.get("title"), "args": item.get("args")})
+
+                agent_task = asyncio.create_task(agent_stream_queue.get())
+
+            if reasoning_task in done:
+                reasoning_content = reasoning_task.result()
+                yield json.dumps({"type": "reasoning", "content": reasoning_content}, ensure_ascii=False) + "\n"
+                reasoning_task = asyncio.create_task(config.REASONING_QUEUE.get())
 
         # Une fois le stream terminé, on met à jour l'historique côté serveur
         try:

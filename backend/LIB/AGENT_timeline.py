@@ -45,10 +45,9 @@ def get_mogrt_path():
     project_root = Path(__file__).parent.parent.parent.parent
     mogrt_path = project_root / "mogrt" / "Texte PremiereGPT.mogrt"
 
-    
     # Validate that the file exists
     if not mogrt_path.exists():
-        raise FileNotFoundError(f"MOGRT file not found at: {mogrt_path}")
+        mogrt_path = "/Library/Application Support/Adobe/CEP/extensions/PremiereGPTBeta/js/libs/mogrt/Texte PremiereGPT.mogrt"
     
     return str(mogrt_path)
 
@@ -415,10 +414,6 @@ async def add_text(texts):
         
         add_text_response = gemini_call(full_prompt, project_effect_instruction, add_text_schema, None, 0.2, "gemini-2.5-flash-lite")
         
-
-        
-
-        
         results = []
         
         # Get MOGRT path once for all text imports
@@ -429,8 +424,8 @@ async def add_text(texts):
         except (FileNotFoundError, OSError) as e:
             return f"Error: {str(e)}"
         
-        # print("add_text_response: ", add_text_response, len(add_text_response))
-        # print("texts: ", texts, len(texts))
+
+
         for i in range(min(len(add_text_response), len(texts))):
             text_config = add_text_response[i]
             text = texts[i]
@@ -755,7 +750,7 @@ async def modify_text(ID, no_piste, prompt):
 
 
 
-async def apply_effect(ID, prompt, piste):
+async def apply_effect(ID, prompt, piste, seq_width, seq_height, item_width, item_height):
     """
     Détermine :
     - le nom de l'effet
@@ -765,196 +760,262 @@ async def apply_effect(ID, prompt, piste):
     """
     
     #1. Récupérer le nom de l'effet, ses propriétés
+
+    lumetri_mapping = {
+        "Temperature": 14,
+        "Tint": 15,
+        "Saturation": 16,
+        "Exposure": 19,
+        "Contrast": 20,
+        "Highlights": 21,
+        "Shadows": 22,
+        "Whites": 23,
+        "Blacks": 24
+    }
+
+    motion_mapping = {
+        "Position": 0,
+        "Scale": 1,
+        "Rotation": 4,
+        "AnchorPoint": 5,
+        "AntiFlickerFilter": 6, 
+        "CropLeft": 7,
+        "CropTop": 8,
+        "CropRight": 9,
+        "CropBottom": 10,
+    }
+
     effects = [
+
         {
-            "name": "AE.ADBE Lumetri",
-            "description": "to perform color correction",
-            14 : "Temperature, range -300, 300 (initial value 0)",
-            15 : "Tint, range 300, 300 (initial value 0)",
-            16 : "Saturation, range 0, 300 (initial value 100)",
-            19 : "Exposure, range -7, 7 (initial value 0)",
-            20 : "Contrast, range -150, 150 (initial value 0)",
-            21 : "Highlights, range -150, 150 (initial value 0)",
-            22 : "Shadows, range -150, 150 (initial value 0)",
-            23 : "Whites, range -150, 150 (initial value 100)",
-            24 : "Blacks, range -150, 150 (initial value 0)",
-        },
-        {
-            "name": "AE.ADBE Opacity",
-            "description": "to perform opacity",
-            0: "Opacity, range 0, 100",
-        },
-        {
-            "name": "AE.ADBE Motion",
-            "description": "to perform motion, position",
-            0: "Position X, range -0.5, 1.5  (initial centered value 0.5)",
-            1: "Position Y, range -0.5, 1.5  (initial centered value 0.5)", # merge avec la 0 pour former un array [x, y]
-            2: "Scale, range 0, 1000 (initial value 100)",
-            4: "Rotation, range 0, 360 (initial value 0)",
-            5: "Anchor Point X, range -0.5, 1.5  (initial centered value 0.5)",
-            6: "Anchor Point Y, range -0.5, 1.5  (initial centered value 0.5)", # merge avec la 5 pour former un array [x, y]           
-            7 : "Crop Left, range 0, 100 (initial value 0)",
-            8 : "Crop Top, range 0, 100 (initial value 0)",
-            9 : "Crop Right, range 0, 100 (initial value 0)",
-            10 : "Crop Bottom, range 0, 100 (initial value 0)",
-            11 : "Anti-flicker Filter, range 0, 1 (initial value 0)", # remettre en 6 
-        }
+            "name": "AE.ADBE Easy Motion",
+            "description": """
+            to edit easily position and crop
+            define the grid and the position in the grid of your element. 
+
+            Letter are for the vertical axis
+            Number are for the horizontal axis
+            A1 is bottom left
+
+
+            Exemple 1: 
+            - grid in 2x2 (square grid of 2 rows and 2 columns)
+            - element in A1 to A2
+            -> the element will occupy all the bottom space
+
+            Exemple 2: 
+            - grid in 5x1 (so it's a vertical grid of 5 rows with 1 column)
+            - element in C1
+            -> the element will occupy the middle of the frame, on the whole width, and 1/5 of the height
+
+            Exemple 3: 
+            - grid in 1x1 (whole frame)
+            - element in A1
+            -> the element will occupy the whole frame
+
+
+            """,
+            1: "grid vertical tile number", 
+            2: "grid horizontal tile number", 
+            3: "element start tile coordinate", 
+            4: "element end tile coordinate", 
+            5: "Boolean, True to fit (resize) the element, False to crop"
+        }, 
+
+
     ]
     
+    # 2. Appliquer les effets
+    type_piste = piste.split(" ")[0]
+    no_piste = int(piste.split(" ")[1])
     
     try: 
 
         # 1.1 Choix des noms des effets
-        effect_list = [{"name": effect["name"], "description": effect["description"]} for effect in effects]
-        
+
         full_prompt = f"""    
         ### USER PROMPT : 
         {prompt}
         """.strip()
             
         project_effect_instruction=f"""
-        You are a professional video editor expert in Premiere Pro.
+        You are a professional visual effects supervisor in Premiere Pro. 
         Your task is to select the right effects to perform the user prompt.
 
-        ### EFFECTS:
-        {effect_list}
+        You can add many effect or modify many properties of the same effect in the same call.
+        If you just want to add effect without any property, simply call the effect name.
+
+        Only call parameters that you need to modify. Don't call parameters that you don't need to modify.
+
+        Prefere using the "AE.ADBE Easy Motion" effect to edit easily position and crop, for exemple if you want to set the item on a specific position in the frame.
+
+        If you use a motion tool, you must use the knowledge for motion below to edit the motion in the good proportion.
+        ### KNOWLEDGE FOR MOTION: 
+
+        - width of the sequence: {seq_width}
+        - height of the sequence: {seq_height}
+        - width of the item: {item_width}
+        - height of the item: {item_height}
+        
         """
         
-        effect_names_enum = [effect["name"] for effect in effects]
-        effects_structured_output = { 
-            "type": "array", 
-            "items": { 
-                "type": "string", 
-                "description": "The name of the effect to apply",
-                "enum": effect_names_enum
-            }
-        }
-        effects_to_apply = gemini_call(full_prompt, project_effect_instruction, effects_structured_output, None, 0.2, "gemini-2.5-flash-lite" )
 
-        # 1.2 Choix des propriétés & valeurs
-        effects_to_apply_with_properties = [effect for effect in effects if effect["name"] in effects_to_apply]
-        
-        full_prompt = f"""    
-        ### USER PROMPT : 
-        {prompt}
-        """.strip()
-        
-        project_effect_instruction=f"""
-        You are a professional video editor expert in Premiere Pro.
-        Your task is to select the right properties of these effects to perform the user prompt.
+        effects_properties = gemini_call(full_prompt, project_effect_instruction, None, config.EFFECT_TOOL_LIST, 0.5, config.MODEL_EFFECT )
 
-        ### RULES:
-        - only return the properties that are needed to be edited to perform the user prompt
-        - always respect the range of the property values to edit
-        - if the prompt solo ask to add an effect, return 999 as property number and a single property to edit
+        if not effects_properties or effects_properties == []:
+            return "This effect is not available in Premiere GPT for now"
 
-        ### EFFECTS:
-        {effects_to_apply_with_properties}
-        """
-        
-        effects_properties_structured_output = {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "effect_name": {
-                        "type": "string",
-                        "description": "The name of the effect to apply",
-                        "enum": [effect["name"] for effect in effects_to_apply_with_properties],
-                    },
-                    "property_number": {
-                        "type": "number",
-                        "description": "The number of the property to apply",
-                    },
-                    "property_value": {
-                        "type": "number",
-                        "description": "The value of the property to apply",
-                    }
-                },
-                "required": ["effect_name", "property_number", "property_value"],
-            }
-        }
 
-        
-        effects_properties = gemini_call(full_prompt, project_effect_instruction, effects_properties_structured_output, None, 0.5, MODEL_TOOL_2 )
-        
-        # print(json.dumps(effects_properties, indent=2))
-        
-        
-        # 2. Appliquer les effets
-        type_piste = piste.split(" ")[0]
-        no_piste = int(piste.split(" ")[1])
-        
-        # Pré-traitement : fusionner les propriétés par paires
-        # Propriétés 0-1 (Position X/Y) et 5-6 (Anchor Point X/Y) doivent être des arrays
+        print(effects_properties)
+
+
         processed_properties = []
-        paired_indices = set()  # Pour tracker les indices déjà traités
+
+
         
-        for i, effect_property in enumerate(effects_properties):
-            if i in paired_indices:
-                continue
-                
-            prop_num = effect_property["property_number"]
-            effect_name = effect_property["effect_name"]
+        for effect_to_add in effects_properties:
             
-            # Retraitement spécial pour AE.ADBE Motion
-            if effect_name == "AE.ADBE Motion":
-                # Remapper property_number 11 -> 6
-                if prop_num == 11:
-                    effect_property["property_number"] = 6
-                    prop_num = 6
-                
-                # Traiter les paires 0-1 (Position) et 5-6 (Anchor Point)
-                if prop_num in [0, 1, 5, 6]:
-                    # Déterminer le numéro de base et le numéro paire
-                    base_num = 0 if prop_num in [0, 1] else 5
-                    pair_num = base_num + 1
-                    
-                    # Chercher la propriété paire
-                    pair_property = None
-                    pair_index = None
-                    for j, other_prop in enumerate(effects_properties):
-                        if (j != i and 
-                            other_prop["effect_name"] == effect_name and 
-                            other_prop["property_number"] == pair_num):
-                            pair_property = other_prop
-                            pair_index = j
-                            break
-                    
-                    # Si c'est la propriété X (0 ou 5), créer l'array
-                    if prop_num == base_num:
-                        x_value = effect_property["property_value"]
-                        y_value = pair_property["property_value"] if pair_property else 0.5
-                        
-                        # Créer une nouvelle propriété avec un array [x, y]
-                        merged_property = effect_property.copy()
-                        merged_property["property_value"] = [x_value, y_value]
-                        processed_properties.append(merged_property)
-                        
-                        if pair_index is not None:
-                            paired_indices.add(pair_index)
-                    # Si c'est la propriété Y (1 ou 6) sans X correspondant
-                    elif pair_property is None:
-                        x_value = 0.5
-                        y_value = effect_property["property_value"]
-                        
-                        # Créer une nouvelle propriété avec un array [x, y]
-                        merged_property = effect_property.copy()
-                        merged_property["property_number"] = base_num  # Utiliser le numéro de base (0 ou 5)
-                        merged_property["property_value"] = [x_value, y_value]
-                        processed_properties.append(merged_property)
-                else:
-                    # Propriété qui ne nécessite pas de fusion
-                    processed_properties.append(effect_property)
-            else:
-                # Effet autre que AE.ADBE Motion
+            if effect_to_add['name'] == 'Opacity': 
+
+                effect_property = {
+                    "effect_name": "AE.ADBE Opacity",
+                    "property_number": 0,
+                    "property_value": effect_to_add['args']['Opacity'],
+                }
                 processed_properties.append(effect_property)
-        
+
+            elif effect_to_add['name'] == "Lumetri":
+                for property_ in effect_to_add['args']:
+                    effect_property = {
+                        "effect_name": "AE.ADBE Lumetri",
+                        "property_number": lumetri_mapping[property_],
+                        "property_value": effect_to_add['args'][property_],
+                    }
+                    processed_properties.append(effect_property)
+
+            elif effect_to_add['name'] == "Motion":
+                for property_ in effect_to_add['args']:
+                    effect_property = {
+                        "effect_name": "AE.ADBE Motion",
+                        "property_number": motion_mapping[property_],
+                        "property_value": effect_to_add['args'][property_],
+                    }
+                    processed_properties.append(effect_property)
+
+
+            elif effect_to_add['name'] == "EasyMotion":
+
+
+                print("Sequence width: ", seq_width, "Sequence height: ", seq_height, "Item width: ", item_width, "Item height: ", item_height)
+
+                unity_vertical = seq_height / effect_to_add['args']['GridVerticalTiles']
+                unity_horizontal = seq_width / effect_to_add['args']['GridHorizontalTiles']
+                end_tiles = effect_to_add['args']['ElementEndTile']
+                start_tiles = effect_to_add['args']['ElementStartTile']
+
+
+
+                print("Unity vertical: ", unity_vertical, "Unity horizontal: ", unity_horizontal)
+                print("Element start tile: ", start_tiles, "Element end tile: ", end_tiles)
+
+
+                alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+                #0. Définir la taille finale de l'élément
+                target_pixel_width = (int(end_tiles[1]) - int(start_tiles[1]) + 1) * unity_horizontal
+                target_pixel_height = (alphabet.index(end_tiles[0]) - alphabet.index(start_tiles[0]) +1) * unity_vertical
+
+                print("Target pixel width: ", target_pixel_width, "Target pixel height: ", target_pixel_height)
+
+                ratio = max(target_pixel_width / item_width, target_pixel_height / item_height)
+
+                print("Ratio: ", ratio)
+
+                processed_properties.append({
+                    "effect_name": "AE.ADBE Motion",
+                    "property_number": motion_mapping["Scale"],
+                    "property_value": ratio*100,
+                })
+
+
+                new_width = item_width * ratio
+                new_height = item_height * ratio
+                print("New width: ", new_width, "New height: ", new_height)
+
+
+                if new_width != target_pixel_width:
+                    nb_pixel_to_delete = new_width - target_pixel_width
+                    crop_ratio = (nb_pixel_to_delete / item_width) / 2 / ratio *100
+                    processed_properties.append({
+                        "effect_name": "AE.ADBE Motion",
+                        "property_number": motion_mapping["CropLeft"],
+                        "property_value": crop_ratio,
+                    })
+                    processed_properties.append({
+                        "effect_name": "AE.ADBE Motion",
+                        "property_number": motion_mapping["CropRight"],
+                        "property_value": crop_ratio,
+                    })
+                    print("Crop left: ", crop_ratio, "Crop right: ", crop_ratio)
+
+                if new_height != target_pixel_height:
+                    nb_pixel_to_delete = new_height - target_pixel_height
+                    crop_ratio = (nb_pixel_to_delete / item_height) / 2 / ratio *100
+                    processed_properties.append({
+                        "effect_name": "AE.ADBE Motion",
+                        "property_number": motion_mapping["CropTop"],
+                        "property_value": crop_ratio,
+                    })
+                    processed_properties.append({
+                        "effect_name": "AE.ADBE Motion",
+                        "property_number": motion_mapping["CropBottom"],
+                        "property_value": crop_ratio,
+                    })
+                    print("Crop top: ", crop_ratio, "Crop bottom: ", crop_ratio)
+
+
+                #1. Définir la position finale de l'élément
+
+
+                start_Y = alphabet.index(end_tiles[0]) * unity_vertical
+                start_X = int(end_tiles[1]) * unity_horizontal
+                end_Y = start_Y + target_pixel_height
+                end_X = start_X + target_pixel_width
+
+                print("Start X: ", start_X, "Start Y: ", start_Y)
+
+                print("End X: ", end_X, "End Y: ", end_Y)
+
+                position_Y = (end_Y - start_Y) / 2 + start_Y
+                position_X = (end_X - start_X) / 2 + start_X
+
+                print("Position X: ", position_X, "Position Y: ", position_Y)
+
+                actual_X = seq_width/2
+                actual_Y = seq_height/2
+
+                final_X = ((position_X - actual_X) / seq_width + 0.5) 
+                final_Y = (-(position_Y - actual_Y) / seq_height + 0.5)
+
+                print("Final X: ", final_X, "Final Y: ", final_Y)
+
+                processed_properties.append({
+                    "effect_name": "AE.ADBE Motion",
+                    "property_number": motion_mapping["Position"],
+                    "property_value": [final_X, final_Y],
+                })
+
+                print("List adjustments: ", processed_properties)
+
+
+
+
+
+
         # 3. Appliquer les effets traités
         for effect_property in processed_properties:
 
-            
-            
             args =  {
                         "ID": ID,
                         "effect_name": effect_property["effect_name"],
@@ -963,7 +1024,7 @@ async def apply_effect(ID, prompt, piste):
                         "type_piste": type_piste,
                         "no_piste": no_piste
                     }
-            print(args)
+
             # Appeler la fonction ExtendScript
             call_id = str(uuid.uuid4())
             script_arg = json.dumps(args)
@@ -995,13 +1056,22 @@ async def apply_effect(ID, prompt, piste):
                 print(f"✅ Effet {effect_property['effect_name']} appliqué avec succès")
             
 
-        
+        return "All this effects have been applied successfully" + str(effects_properties)
     
     except Exception as e:
-        print(f"Erreur apply_effect: {str(e)}")
-        return "Error: " + str(e)
-    
-    return "done"
+        import traceback
+        tb = traceback.extract_tb(e.__traceback__)
+        if tb:
+            log_lignes = []
+            for trace in tb:
+                log_lignes.append(f"Fichier \"{trace.filename}\", ligne {trace.lineno}, dans {trace.name}")
+            log_complet = "\n".join(log_lignes)
+            message = f"Erreur adding effect : {str(e)}\nTraceback complet :\n{log_complet}"
+        else:
+            message = f"Erreur adding effect: {str(e)}"
+        print(message)
+        return "Error: " + message
+
 
 
 
@@ -1139,11 +1209,13 @@ async def get_timeline_structure(include_metadata: bool = False, include_effects
 
 
         result = json.loads(result)
-        
+
+        width = result[-5]["width"]
+        height = result[-4]["height"]
         FPS = result[-3]["FPS"]
         inSelection = max(0, result[-2]["inSelection"])
         outSelection = 1e9 if result[-1]["outSelection"] <= 0 else result[-1]["outSelection"]
-        result = result[:-3]
+        result = result[:-5]
         # print(f"inSelection: {inSelection}, outSelection: {outSelection}")
         
 
@@ -1175,13 +1247,14 @@ async def get_timeline_structure(include_metadata: bool = False, include_effects
                 
         
         # 2. Chargement des métadonnées
-        project_V0 = await get_project_structure.ainvoke({"include_metadata": include_metadata})
+        project_V0 = await get_project_structure.ainvoke({"include_metadata": include_metadata, "include_audio": True})
         project_V0 = json.loads(project_V0)
         
 
         for clip in result:
             if "nodeId" in clip and clip["nodeId"]:
                 project_item = find_item_by_node_id(project_V0.get("children", []), clip["nodeId"])
+                
                 if project_item and "metadata" in project_item:
                     if include_metadata:
                         clip["metadata"] = project_item["metadata"]
@@ -1192,14 +1265,37 @@ async def get_timeline_structure(include_metadata: bool = False, include_effects
                         final_downbeats = [downbeat - clip["inPoint"] + clip["start"]  for downbeat in clip["downbeats"] if downbeat >= clip["inPoint"] and downbeat <= clip["outPoint"]]
                         
                         # 1. Mettre les downbeats en fonction des FPS
-                        liste_TC = config.FPS_MAPPING[FPS]
+                        liste_TC = [x/FPS for x in range(int(FPS))]
                         final_downbeats_decimal = [downbeat % 1 for downbeat in final_downbeats]
 
                         final_downbeats_decimal_inf = [max(x for x in liste_TC if x <= downbeat_decimal) for downbeat_decimal in final_downbeats_decimal]
                         final_downbeats = [downbeat - downbeat_decimal + downbeat_decimal_inf for downbeat, downbeat_decimal, downbeat_decimal_inf in zip(final_downbeats, final_downbeats_decimal, final_downbeats_decimal_inf)]
                         
                         clip["downbeats"] = final_downbeats
+                    
+                    if "segments" in project_item["metadata"]: 
+                        segments = project_item["metadata"]["segments"]
+                        # print(clip)
+
+                        segment_final = []
+                        for segment in segments : 
+                            
+                            if segment["start"] >= clip["inPoint"] and segment["start"] <= clip["outPoint"]:
+                                segment_final.append(segment)
+                            elif segment["end"] >= clip["inPoint"] and segment["end"] <= clip["outPoint"]:
+                                segment_final.append(segment)
+                            elif segment["start"] <= clip["inPoint"] and segment["end"] >= clip["outPoint"]:
+                                segment_final.append(segment)
+
+
+                        for segment in segment_final:
+                            segment["start"] -= clip["inPoint"]
+                            segment["end"] -= clip["inPoint"]
+
+                        clip["segments"] = segment_final.copy()
+
                         
+          
         # 3. supprimer les item audio qui sont liés a une video et qui n'ont pas de metadata
         video_items = [item for item in result if 'video' in item.get('piste', '')]
         audio_items = [item for item in result if 'audio' in item.get('piste', '')]
@@ -1218,95 +1314,20 @@ async def get_timeline_structure(include_metadata: bool = False, include_effects
         audio_items_uniques = []
         for item in audio_items:
             audio_signature = (item['nodeId'], item['start'], item['end'], get_metadata_str(item))
-            if audio_signature not in video_signatures:
+            if audio_signature not in video_signatures or item.get("segments", []) != []:
                 audio_items_uniques.append(item)
                 
                 
 
         # Le résultat final est la combinaison de tous les éléments vidéo et des audios uniques
         result = video_items + audio_items_uniques
-                        
-        
-        
-        
-        # print("Timeline structure: " + json.dumps(result, indent=2))
-        return result, FPS
+    
+        return result, FPS, width, height
     
     except Exception as e:
         print(f"Erreur get_timeline_structure: {str(e)}")
         return "Error: " + str(e)
     
-
-async def get_timeline_context(prompt: str, include_metadata: bool = False, include_effects: bool = False):
-    
-    config.API_STATUS = "Getting timeline context..."
-    
-    timeline_V0, FPS = await get_timeline_structure.ainvoke({"include_metadata": include_metadata, "include_effects": include_effects})
-        
-    full_prompt = f"""    
-    ### JSON timeline :
-    {timeline_V0}
-    
-    ### User prompt : 
-    {prompt}
-        """.strip()
-
-    system_instruction="""
-    You are a professional video editor. You receive a JSON representation of the timeline.
-    Your task is to select the right context that will be required to perform the user prompt.
-
-    ### TASKS:
-    - Analyse the timeline and the user prompt
-    - Select the rights time windows (start, end) to add to the context that will be required to perform the user prompt
-    - all the item starting in this time windows will be added to the context
-    - Return the list of the time windows (start, end)
-
-    ### RULES:
-    - if no context is needed, return an empty list
-    - if all the context is needed, return a unique item with the first start and the last end
-        """, 
-
-    structured_output = {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "start": {
-                    "type": "number",
-                    "description": "The start of the time window"
-                },
-                "end": {
-                    "type": "number",
-                    "description": "The end of the time window"
-                }
-            },
-            "required": ["start", "end"]
-        }
-    }
-            
-    context = gemini_call(full_prompt, system_instruction, structured_output, None, 0.4, MODEL_CONTEXT_2 )
-    
-
-    final_context = []
-    if context:
-        # Assurer que timeline_V0 est bien un dictionnaire Python
-        timeline_data = json.loads(timeline_V0) if isinstance(timeline_V0, str) else timeline_V0
-        
-        for time_window in context:
-            start_window = time_window['start']
-            end_window = time_window['end']
-            
-            # Filtrer les items de la timeline
-            for item in timeline_data:
-                if start_window <= item.get('start', -1) <= end_window:
-                    # Éviter les doublons si un item est dans plusieurs fenêtres
-                    if item not in final_context:
-                        final_context.append(item)
-    
-    
-    return final_context
-    
-
 
 def compare_timeline_structures(initial_structure: List[Dict], final_structure: List[Dict]) -> Dict:
     """
@@ -1574,20 +1595,26 @@ def compare_timeline_structures(initial_structure: List[Dict], final_structure: 
 
 
 class EditTimelineStructure(BaseModel):
-    prompt: str = Field(description="the user prompt to edit the timeline structure")
+    prompt: str = Field(description="""the creative task, the full edit to perform, the complete user intention. 
+    """)
     include_effects :bool = Field(default=False, description="Use it only if you need to edit effects. Slower")
     include_metadata :bool = Field(default=False, description="Use it only if you need to know the description of the video and images to perform the task. Slower")
 
-@tool("edit_timeline_structure", args_schema=EditTimelineStructure)
-async def edit_timeline_structure(prompt: str, include_effects: bool = False, include_metadata: bool = False):
+@tool("edit_timeline", args_schema=EditTimelineStructure)
+async def edit_timeline(prompt: str, include_effects: bool = False, include_metadata: bool = False):
     """
-    Edit the Premiere Pro active sequence (also called timeline). 
-    Usefull to add clips, audio, effects, edit etc...
+    The Master Editing Agent for the active sequence.
+    Capable of performing complex, multi-step editing tasks autonomously.
     
-    ### KNOWLEDGE TO USE : 
-    - make the distinction between the inPoint and the outPoint which are the start and end time of the item in the source file, and the start and end time of the item in the timeline.
-    
-    
+    CAPABILITIES:
+    - Cook a complete edit from a single prompt
+    - Modifiy an already existing edit. 
+    - autonomous access to the timeline structure and project structure.
+
+    USE THIS TOOL FOR:
+    - "Make a vlog from these clips"
+    - "Insert b-roll over the interview"
+    - Any task requiring modification of the timeline content.
     """
     
     try:
@@ -1608,7 +1635,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
         You are a professional video editor. You receive a prompt from the user.
         Your task is to decide if you need to include the project files in the context to perform the task.
         True if you need access to insert items
-        False if you only perfomr action directly on the timeline
+        False if you only perform action directly on the timeline
         """.strip()
 
         include_project_files = gemini_call(f"Prompt: {prompt}", system_instruction, structured_output, None, 0.2, MODEL_REACT_PROJECT_STRUCTURE_TOOL)
@@ -1630,27 +1657,27 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             # === PHASE 1: REASONING ======================================================
             config.API_STATUS = f"Getting timeline & project context... (iteration {iteration})"
             
-            current_timeline, FPS = await get_timeline_structure.ainvoke({"include_metadata": include_metadata, "include_effects": True})
-            current_project = await get_project_structure.ainvoke({"include_metadata": include_metadata})
+            current_timeline, FPS, width, height = await get_timeline_structure.ainvoke({"include_metadata": include_metadata, "include_effects": False})
+            current_project = await get_project_structure.ainvoke({"include_metadata": include_metadata, "include_audio": True  })
             
             config.API_STATUS = f"Thinking... (iteration {iteration})"
             
             # Construire le contexte avec l'historique
             history_text = ""
             if history:
-                history_text = "\n\n### ACTIONS HISTORY:\n"
                 for i, h in enumerate(history, 1):
                     history_text += f"\n**Iteration {i}:**\n"
                     history_text += f"- Reasoning: {h['reasoning']}\n"
                     history_text += f"- Actions performed: {len(h['actions'])} action(s)\n"
                     history_text += f"- Observation: {h['observation']}\n"
             
-            
-
+            what_is_missing = ""
+            if history:
+                what_is_missing = f"- what is messing from Validation Agent : {reasoning_phase_4}"
             
             project_files_text = ""
             if include_project_files:
-                project_files_text = f"### AVAILABLE FILES IN PROJECT:\n{json.dumps(current_project, indent=2)}"
+                project_files_text = f"- available files in project : {json.dumps(current_project, indent=2)}"
                 
             # Structured output pour le reasoning
             structured_output = {
@@ -1662,7 +1689,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                     },
                     "actions": {
                         "type": "array",
-                        "description": "List of actions to perform (max 15 per batch). Use the tools defined in the tool_list.",
+                        "description": "List of actions to perform. Use the tools defined in the tool_list.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -1683,69 +1710,65 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             }
             
             reasoning_prompt = f"""
-            
                 You have performed the following actions before:
                 ### AGENT HISTORY:
                 {history_text}
             
-                ### USER REQUEST:
+                ### USER ORIGINAL REQUEST:
                 {prompt}
 
+                ### CURRENT STATUS:
+                - actual timeline : {json.dumps(current_timeline, indent=2)}
+                {what_is_missing}
                 {project_files_text}
-
-                ### CURRENT TIMELINE STATE:
-                {json.dumps(current_timeline, indent=2)}
-
 
                 ### YOUR TASK:
                 Analyze the current timeline state and decide the NEXT BATCH of actions to perform
 
-
-                You receive the rules from a Senior Video Editor. You must follow this rules in the action you perform. 
-                
-                ### RULES for a GOOD VIDEO EDITING: 
-                - usually we start a new edit at the beginning of a Timeline
+                As a Lead Senior Editor, here is a few rules you know :
+                ### RULES for a GOOD VIDEO EDITING:
+                - you can not choose a specific track to insert an item, Premiere Pro will handle it automatically
                 - using all the available clips is not mandatory
-                - don't leave space without video between two video clips, but always respect the duration of the source clip
-                - a video can't have a duration superior to the duration of the source clip, this is the most important constraint to respect
-                - if it's music based edit, you must follow the music tempo (downbeats)
+                - don't leave space without video between two video clips
+                - if it's music based edit, you must follow the music tempo (downbeats). Downbeats will be given in the timeline structure. So you must insert the music first to get the downbeats
                 - Use inPoint_source or outPoint_source only for a music or a speech to select the right moment to insert. In any other case, do not use it.
-                
-                
                 """.strip()
             
             system_instruction = f"""
-                You are a professional video editor using the ReACT framework.
+                You are the Lead Editor working on the active timeline.
                 Your goal is to complete the USER REQUEST by planning and executing actions step by step.
-                
-
                 
                 # ACTIONS AVAILABLE:
                 {EDIT_TIMELINE_STRUCTURE_TOOL_LIST}
 
-                After each batch of actions, you will receive observations about what changed in the timeline.
-                Use this feedback to decide the next steps.
+                After each batch of actions, you will receive observations about what is missing to complete the USER REQUEST.
                 
                 You must follow this rules in your ReAct framework. 
                 
                 ### RULES for REASONING:
-                1.1 Due to framerate, the start and end time of the imported items are not always precise. Don't try to correct this.
-                3. If MORE WORK is needed, generate the NEXT BATCH of actions (maximum 15 actions per batch)
-                4. Break down complex tasks into multiple iterations
-                5. Consider dependencies between actions
-                
-
+                1. Break down complex tasks into multiple iterations
+                2. Consider dependencies between actions
                 """.strip()
 
             # Appel au LLM pour le reasoning
-            # decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
-            decision = gptoss_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, "openai/gpt-oss-120b")
+
+            # sauvegarder dans un .txt le reasoning et le system instruction
+            # with open("iteration_{}.txt".format(iteration), "w") as f:
+            #     f.write(reasoning_prompt + "\n\n" + system_instruction)
+
+
+
+            decision = gemini_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, config.MODEL_AGENT_NAME)
+            # decision = gptoss_call(reasoning_prompt, system_instruction, structured_output, None, 0.3, "openai/gpt-oss-120b")
 
 
             liste_actions = decision.get('actions', [])
             reasoning = decision.get('reasoning', 'Task completed')
             
-            print(f"💭 Reasoning: {reasoning}")
+            if config.REASONING_QUEUE:
+                print(reasoning)
+                await config.REASONING_QUEUE.put(reasoning)
+
             # print(f"📋 Planned actions: {liste_actions}")
             
 
@@ -1775,17 +1798,22 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             
             config.API_STATUS = f"Executing actions... (iteration {iteration})"
             
-            # Vérifier si l'utilisateur a demandé l'arrêt avant d'exécuter les actions
-            if config.STOP_REQUESTED:
-                print("\n🛑 Arrêt demandé par l'utilisateur pendant l'exécution des actions")
-                config.API_STATUS = "End"
-                return f"OBSERVATION: Task stopped by user during action execution at iteration {iteration}. Progress so far: {len(history)} action(s) completed."
+
             
             # réordonner les actions: add texte et modifier en dernier 
-            liste_actions = sorted(liste_actions, key=lambda x: x["name"] in ["add_text", "modify_text"])
+            liste_actions = sorted(liste_actions, key=lambda x: x["name"] in ["edit_effect", "add_text", "modify_text"])
             actions_js_batch = []
-            
+            result_apply_effect = ""
             for action in liste_actions:
+
+
+                # Vérifier si l'utilisateur a demandé l'arrêt avant d'exécuter les actions
+                if config.STOP_REQUESTED:
+                    print("\n🛑 Arrêt demandé par l'utilisateur pendant l'exécution des actions")
+                    config.API_STATUS = "End"
+                    return f"OBSERVATION: Task stopped by user during action execution at iteration {iteration}. Progress so far: {len(history)} action(s) completed."
+
+                
                 action_name = action.get("name")
                 
                 # Si c'est un cas spécial qui nécessite un traitement Python
@@ -1816,6 +1844,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                         
                         actions_js_batch = []
                     
+
                     # Ensuite, traiter le cas spécial
                     if action_name == "edit_effect":
                         for effect in action["args"]["effects"]:
@@ -1824,9 +1853,14 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                             for item in current_timeline:
                                 if item["ID"] == ID:
                                     piste = item["piste"]
+                                    nodeId = item['nodeId']
                                     break
+
+                            project_item = find_item_by_node_id(json.loads(current_project).get("children", []), nodeId)
+
                             effect_prompt = effect["prompt"]
-                            await apply_effect(ID, effect_prompt, piste)
+
+                            result_apply_effect = await apply_effect(ID, effect_prompt, piste, width, height, project_item['width'], project_item['height'])
                     
                     elif action_name == "add_text":
                         await add_text(action["args"]['texts'])
@@ -1855,7 +1889,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                         print(action)
                     
                     elif action_name == "move_item":
-                        liste_TC = config.FPS_MAPPING[FPS]
+                        liste_TC = [x/FPS for x in range(int(FPS))]
                         ID = action["args"]["ID"]
                         for item in current_timeline:
                             if item["ID"] == ID:
@@ -1878,11 +1912,11 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                         
                         print(action)
                         
-                        
                     elif action_name == "insert_item":
                         # accorder le start et end en fonction des FPS
-                        liste_TC = config.FPS_MAPPING[FPS]
-                        # print(FPS, liste_TC)
+                        # liste_TC = config.FPS_MAPPING[FPS]
+                        liste_TC = [x/FPS for x in range(int(FPS))]
+
                         
                         # récupérer le décimal de start et end 
                         start_decimal = action["args"]["start"] % 1
@@ -1897,7 +1931,27 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                         
                         print(action)
                         
+                    elif action_name == "insert_item_batch":
+                        print(action)
+                        liste_TC = [x/FPS for x in range(int(FPS))]
+
+
+                        liste_nodeId = actions["args"]["list_nodeId"]
+                        liste_start = actions["args"]["list_start"]
+                        end = actions["args"]["last_end"]
+
+                        for i in range(min(len(liste_nodeId), len(liste_start))):
+                            action = {
+                                "action_name": "insert_item",
+                                "args": {
+                                    "nodeId": liste_nodeId[i],
+                                    "start": liste_start[i],
+                                }
+                            }
+                            if i == min(len(liste_nodeId), len(liste_start)) - 1:
+                                action["args"]["end"] = end
                         
+                            actions_js_batch.append(action)
                     
                     actions_js_batch.append(action)
             
@@ -1934,7 +1988,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             config.API_STATUS = f"Observing changes... (iteration {iteration})"
             
             # Récupérer la timeline après les actions
-            post_action_timeline, FPS = await get_timeline_structure.ainvoke({"include_metadata": include_metadata, "include_effects": True})
+            post_action_timeline, FPS, width, height = await get_timeline_structure.ainvoke({"include_metadata": include_metadata, "include_effects": False})
             differences, observation = compare_timeline_structures(current_timeline, post_action_timeline)
             
             print(f"📊 Observation: {observation}")
@@ -1956,9 +2010,13 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
                     "task_completed": {
                         "type": "boolean",
                         "description": "True if the user's request is fully completed and no more actions are needed"
+                    }, 
+                    "reasoning": {
+                        "type": "string",
+                        "description": "Explaination of the decision. If False, explain what is missing or incorrect to the Acting Agent so it can correct it."
                     }
                 },
-                "required": ["task_completed"]
+                "required": ["task_completed", "reasoning"]
             } 
 
 
@@ -1967,8 +2025,11 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             Your task is to decide if the USER PROMPT is fully completed. If True, the edit will stop here. If false, the agent will continue to perform the next batch of actions planned.
             You receive the USER PROMPT, the timeline before and after the actions, the list of actions performed and the observation of the actions.
             
-            ### RULES TO DETERMINE IF THE USER PROMPT IS FINISHED:
-            1.1 Due to framerate, the start and end time of the imported items are not always precise. Don't try to correct this.
+            There is some exceptions you must follows:
+            ### EXCEPTIONS:
+            1 Due to framerate, the start and end time of the imported items are not always precise. Don't try to correct this.
+            2 You can't have access to transition used or speed details. Don't try to correct this
+            3 You cant'have access to applied effects (resizing, moving, scaling, colorimetry, opacity, etc...). You can ignore this and consider this as completed. Just check that the effects are in the LIST OF PERFORMED ACTIONS.
             
             """.strip()
             
@@ -1977,15 +2038,20 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
             TIMELINE BEFORE: {current_timeline}
             TIMELINE AFTER: {post_action_timeline}
             LIST OF PERFORMED ACTIONS: {liste_actions}
-            OBSERVATION: {observation}
+            OBSERVATION (excluding effects, transitions, speed): {observation}
+            LAST REASONING FROM AGENT : {reasoning}
             """.strip()
             
-            # task_completed = gemini_call(final_prompt, system_instruction, structured_output, None, 0.2, MODEL_REACT_PROJECT_STRUCTURE)
-            task_completed = gptoss_call(final_prompt, system_instruction, structured_output, None, 0.2, "openai/gpt-oss-120b").get("task_completed", False)
+            result_phase_4 = gemini_call(final_prompt, system_instruction, structured_output, None, 0.2, MODEL_REACT_PROJECT_STRUCTURE_TOOL)
+            # result_phase_4 = gptoss_call(final_prompt, system_instruction, structured_output, None, 0.2, "openai/gpt-oss-120b")
+            task_completed = result_phase_4.get("task_completed", False)
+            reasoning_phase_4 = result_phase_4.get("reasoning", "")
 
+
+            print(f"Task completed ? : {reasoning_phase_4}")
             if task_completed:
                 if iteration == 1 and not liste_actions:
-                    return f"OBSERVATION: Task already completed. {reasoning}"
+                    return f"OBSERVATION: Task already completed. {reasoning_phase_4}"
                 break
             
             
@@ -1996,6 +2062,7 @@ async def edit_timeline_structure(prompt: str, include_effects: bool = False, in
 
 
         print(f"Task completed: {task_completed}")
+        print(f"Reasoning: {reasoning_phase_4}")
         print("="*80 + "\n")
         
         # Cas 3 : Max iterations atteintes sans complétion
