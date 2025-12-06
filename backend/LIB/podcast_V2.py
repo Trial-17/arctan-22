@@ -6,6 +6,7 @@ from LIB import config
 import pandas as pd
 import requests
 
+
 def transform_front_to_modal(audio_files, front_data):
     modalFormData = {}
     
@@ -473,7 +474,7 @@ def separate_cameras(camera_list):
             
     return camera_speaker_list, camera_wide_list
     
-def assign_wide_cameras(result, camera_wide_list, percentage_map , freq_weights,threshold ):
+def assign_wide_cameras(result, camera_wide_list, percentage_map, freq_weights, threshold, max_time):
     """
     Analyse une timeline pour placer intelligemment des plans larges
     en fonction des enchaînements de coupes et des caméras disponibles.
@@ -600,24 +601,173 @@ def assign_wide_cameras(result, camera_wide_list, percentage_map , freq_weights,
         # On ajoute la coupe suivante seulement si la caméra est différente de la précédente
         if result[i]['camera'] != cleaned_result[-1]['camera']:
             cleaned_result.append(result[i])
+            
+    # Initialisation de result avec le nettoyage
+    result = cleaned_result
 
-    return cleaned_result
+    # === Étape 7 : Remplissage pour atteindre le quota de plans larges ===
+    
+    # 7.1 Calcul de la cible
+    if not camera_wide_list:
+        target_total = 0
+    else:
+        # High 100/h, Medium 75/h, Low 50/h, Very low 25/h
+        rates = {"High": 80, "Medium": 60, "Low": 40, "Very low": 20}
+        target_rate = rates.get(global_freq, 25)
+        duration_hours = max_time / 3600.0
+        target_total = int(target_rate * duration_hours)
+    
+    # 7.2 Compter les plans larges existants
+    wide_tracks = {c['track'] for c in camera_wide_list}
+    current_wide_count = 0
+    
+    # On parcourt result pour compter les segments continus de wide
+    # Attention: result est une liste de coupes. 
+    # Un plan large = 1 ou plusieurs coupes consécutives avec une camera wide.
+    # Ici après étape 6, les doublons consécutifs sont fusionnés, donc chaque entry est un segment.
+    
+    for item in result:
+        if item['camera'] in wide_tracks:
+            current_wide_count += 1
+            
+    needed = target_total - current_wide_count
+    
+    # 7.3 Boucle d'insertion
+    # Pour éviter une boucle infinie si on ne peut pas placer, on ajoute un compteur de sécurité
+    attempts = 0
+    max_attempts = needed * 5
+    
+    while needed > 0 and attempts < max_attempts:
+        attempts += 1
+        
+        # Trouver le plus long segment NON WIDE
+        longest_segment_idx = -1
+        max_duration = 0.0
+        
+        n = len(result)
+        for i in range(n):
+            if result[i]['camera'] in wide_tracks:
+                continue
+                
+            start_t = result[i]['time']
+            # Durée jusqu'au prochain cut ou max_time
+            if i < n - 1:
+                end_t = result[i+1]['time']
+            else:
+                end_t = max_time
+                
+            dur = end_t - start_t
+            
+            if dur > max_duration:
+                max_duration = dur
+                longest_segment_idx = i
+        
+        # Si on ne trouve pas de segment assez long (au moins 12s + marges ? disons 13s)
+        # On veut insérer 8-12s. Il faut que le segment soit > à la durée à insérer.
+        if longest_segment_idx == -1 or max_duration < 8.0:
+            break
+            
+        # Paramètres d'insertion
+        insert_duration = random.uniform(8.0, 12.0)
+        
+        # Si le segment est à peine plus grand que insert_duration, on adapte ou on skip ?
+        # Si segment < insert_duration, impossible.
+        if max_duration < insert_duration:
+            # On essaye de réduire un peu la demande si possible (min 8s)
+            if max_duration > 8.0:
+                insert_duration = max_duration - 0.1 # On laisse un tout petit bout ?
+            else:
+                # Segment trop court pour un wide shot décent
+                break 
+        
+        # Point d'insertion: milieu
+        seg_start = result[longest_segment_idx]['time']
+        
+        # Calcul des temps pour les nouveaux points
+        # Structure visée: [Original (début)] -> [Wide (milieu)] -> [Original (fin)]
+        # Temps début Wide = start + (duration - wide_dur)/2
+        wide_start_time = seg_start + (max_duration - insert_duration) / 2
+        
+        # Temps retour Original = wide_start + wide_dur
+        return_original_time = wide_start_time + insert_duration
+        
+        # Choix de la caméra
+        active_speaker = result[longest_segment_idx]['active_speaker']
+        
+        # 1. Filtrer caméras avec active_speaker
+        candidates = [c for c in camera_wide_list if active_speaker in c['speaker']]
+        
+        selected_cam = None
+        if candidates:
+            # Pondération
+            w = [freq_weights.get(c['frequence'], 1) for c in candidates]
+            # random.choices retourne une liste, on prend le 0
+            selected_cam = random.choices(candidates, weights=w, k=1)[0]
+        else:
+            # 2. Sinon, prendre celle avec le plus de speakers
+            # Tri par nb speakers desc
+            if camera_wide_list:
+                sorted_cams = sorted(camera_wide_list, key=lambda x: len(x['speaker']), reverse=True)
+                selected_cam = sorted_cams[0]
+        
+        if not selected_cam:
+            break # Should not happen if wide list not empty
+            
+        cam_track = selected_cam['track']
+        original_track = result[longest_segment_idx]['camera']
+        original_speaker = result[longest_segment_idx]['active_speaker']
+        
+        # Insertion dans la liste result
+        # On doit insérer 2 nouveaux points APRES l'index courant
+        # Attention aux index qui bougent
+        
+        # Point 1: Le début du plan large
+        wide_cut = {
+            'time': wide_start_time,
+            'camera': cam_track,
+            'active_speaker': original_speaker # On suppose que le speaker ne change pas (c'est un segment continu)
+        }
+        
+        # Point 2: Le retour au plan d'origine
+        return_cut = {
+            'time': return_original_time,
+            'camera': original_track,
+            'active_speaker': original_speaker
+        }
+        
+        # Insertion
+        # [idx] est le début du segment (Original)
+        # [idx+1] sera Wide
+        # [idx+2] sera Retour Original
+        # [idx+3] est le cut suivant existant
+        
+        result.insert(longest_segment_idx + 1, wide_cut)
+        result.insert(longest_segment_idx + 2, return_cut)
+        
+        current_wide_count += 1
+        needed -= 1
+        
+        # Note: La boucle for (range(n)) du tour suivant reprendra tout à zéro sur la nouvelle liste
+        
+    return result
 
 def main_podcast(file_paths, front_data, user_token=None):
     
-    freq_weights = {"High": 0.5, "Medium": 0.3, "Low": 0.15, "Very low": 0.05}
-    percentage_map = {"High": 0.8, "Medium": 0.6, "Low": 0.4, "Very low": 0.2}
-    threshold = 1.5
+    freq_weights = config.PODCAST_FREQ_WEIGHTS
+    percentage_map = config.PODCAST_PERCENTAGE_MAP
+
+    # freq_weights = {"High": 0.5, "Medium": 0.3, "Low": 0.15, "Very low": 0.05}
+    # percentage_map = {"High": 0.8, "Medium": 0.6, "Low": 0.4, "Very low": 0.2}
+    threshold = config.THRESHOLD # pour comtper les enchainemetns d'échnage rapide  
     
     try:
-        lissage_duree_sec = 0.80
+        # lissage_duree_sec = 0.80
+        lissage_duree_sec = 5
         ignoreCutLessThan = front_data['global']['ignoreCutLessThan']
         delayCuts = front_data['global']['delayCuts']
     except KeyError as e:
         raise ValueError(f"Missing required parameter in front_data: {e}")
-    
-    # print(file_paths)
-    # print(front_data)
+
 
     # License validation
     if user_token is not None:
@@ -660,15 +810,16 @@ def main_podcast(file_paths, front_data, user_token=None):
         
         timeline_V0= get_timeline(speaker_times)
 
-        # 
+        # print(camera_speaker_list, camera_wide_list)
         if cut_max != 0:
             timeline_V1 = generate_cuts(timeline_V0, cut_min, cut_max, max_time) # application du max cut
             timeline_V2 = assign_cameras_to_cuts(timeline_V1, camera_list, freq_weights) # application des caméras speaker
-        # print(camera_speaker_list, camera_wide_list)
+            
         else:
             timeline_V2 = assign_cameras_to_cuts(timeline_V0, camera_speaker_list, freq_weights) # application des caméras speaker
-            
-        timeline_V3 = assign_wide_cameras(timeline_V2, camera_wide_list, percentage_map, freq_weights, threshold) # application des caméras wide
+        
+        # print(timeline_V2, camera_wide_list, percentage_map, freq_weights, threshold, max_time)
+        timeline_V3 = assign_wide_cameras(timeline_V2, camera_wide_list, percentage_map, freq_weights, threshold, max_time) # application des caméras wide
         timeline_V4 = apply_min_time_timeline(timeline_V3, min_gap=ignoreCutLessThan) # application du ignore cut less than 
         timeline_V5 = shift_timeline(timeline_V4, delayCuts) # application du delay cuts
 

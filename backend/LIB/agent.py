@@ -37,42 +37,52 @@ MODEL_TOOL_2 = "gemini-2.5-flash-lite" # Choose Effect properties
 
 TOOL_DISPLAY_MAPPING = {
     "get_project_structure": {
-        "title": "Grepping project",
-        "category": "extendscript"
+        "titles": ["Grepping project", "Reading project", "Analyzing project", "Scanning project"],
+        "category": "extendscript",
+        "icon": "agent_project_read.png"
     },
     "edit_project_structure": {
-        "title": "Editing project",
-        "category": "extendscript"
+        "titles": ["Editing project", "Modifying project", "Updating project", "Restructuring project"],
+        "category": "extendscript",
+        "icon": "agent_project_edit.png"
     },
     "get_timeline_structure": {
-        "title": "Grepping timeline",
-        "category": "extendscript"
+        "titles": ["Grepping timeline", "Reading timeline", "Analyzing timeline", "Scanning timeline"],
+        "category": "extendscript",
+        "icon": "agent_timeline_read.png"
     },
     "edit_timeline": {
-        "title": "Editing timeline",
-        "category": "extendscript"
+        "titles": ["Editing timeline", "Modifying timeline", "Updating timeline", "Crafting timeline"],
+        "category": "extendscript",
+        "icon": "agent_timeline_edit.png"
     }, 
     "labelize_audio": {
-        "title": "Grepping audio",
-        "category": "extendscript"
+        "titles": ["Grepping audio", "Analyzing audio", "Processing audio", "Scanning audio"],
+        "category": "extendscript",
+        "icon": "agent_audio.png"
     },
     "open_timeline": {
-        "title": "Opening timeline",
-        "category": "extendscript"
+        "titles": ["Opening timeline", "Loading timeline", "Accessing timeline", "Switching timeline"],
+        "category": "extendscript",
+        "icon": "agent_open.png"
     }, 
-    "get_to_do_list_for_timeline_structure": {
-        "title": "Crafting todo",
-        "category": "extendscript"
-    },
     "get_creative_todo": {
-        "title": "Crafting todo",
-        "category": "extendscript"
+        "titles": ["Crafting todo", "Planning workflow", "Designing approach", "Organizing steps"],
+        "category": "extendscript",
+        "icon": "agent_project_read.png"
     }, 
     "export_sequence": {
-        "title": "Exporting sequence",
-        "category": "extendscript"
+        "titles": ["Exporting sequence", "Rendering sequence", "Outputting sequence", "Generating export"],
+        "category": "extendscript",
+        "icon": "agent_render.png"
     }
 }
+
+def get_random_tool_title(tool_name):
+    """Sélectionne aléatoirement un titre parmi les variantes disponibles pour un outil."""
+    import random
+    tool_info = TOOL_DISPLAY_MAPPING.get(tool_name, {"titles": [tool_name], "category": "default", "icon": "check.png"})
+    return random.choice(tool_info["titles"])
 
 
 def gemini_call(prompt, system_instruction, structured_output = None, tool_list = None, temperature= 0.1,  model = "gemini-2.5-flash-lite"): 
@@ -116,14 +126,11 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
         
         # Extraire le résultat
         result = response.json().get("result")
-        
-        log_gemini_call("agent.py::gemini_call", payload, result)  # LOG
-        
+    
         # Retourner le résultat dans le même format que l'ancienne fonction
         return result
         
     except requests.exceptions.RequestException as e:
-        log_gemini_call("agent.py::gemini_call", payload if 'payload' in locals() else {}, None, str(e))  # LOG
         print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
         raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 
@@ -134,107 +141,98 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
 # ------------- AGENT -------------
 
 
-class GetToDoListForProjectStructure(BaseModel):
-    prompt: str = Field(description="the prompt to get the to do list for the project structure")
-
-@tool("get_to_do_list_for_project_structure", args_schema=GetToDoListForProjectStructure)
-async def get_to_do_list_for_project_structure(prompt: str):
-    """
-    Ask the to do list to handle the user prompt if it's focused on the project structure
-    """
-    
-    
-    system_instruction = f"""
-    You are a professional video editor.
-    You receive a user prompt.
-    Your task is to think how to handle the user prompt, and return a to do list to describe to an AI agent how to handle the user prompt.
-    
-    
-    ### TOOLS access:
-    - get_project_structure : give informations about available media to use
-    - edit_project_structure : use to create sequences, bins, organize the project structure. Can handle multiple actions in one call.
-    - labelize_audio : use to get music tempo, transcription of audio before using it 
-    
-    
-    you can use the followings common rules about video editing : 
-    
-    ### RULES:
-    - if needed specifiy the tool to use in your todo point
-    - for COMPLEX tasks with many operations, BREAK THEM DOWN into multiple tool calls instead of one big call.
-
-    
-    """
-    
-    structured_output = {
-        "type": "array",
-        "items": {
-            "type": "string",
-            "description": "The todo to perform the user prompt"
-        }
-    }
-    
-    todo_list = gemini_call(prompt, system_instruction, structured_output, None, 0.2, "gemini-2.5-flash" )
-    
-    print(f"Todo list")
-    for todo in todo_list:
-        print(f"- {todo}")
-    
-    return todo_list
-
-
-
 class GetCreativeTodo(BaseModel):
-    prompt: str = Field(description="the prompt to get the creative todo")
+    prompt: str = Field(description="the user prompt")
 
 @tool("get_creative_todo", args_schema=GetCreativeTodo)
 async def get_creative_todo(prompt: str):
     """
-    Get the creative todo to handle the user prompt if it's focus on creative tasks such a new edit
+    Call this tool before performing the user prompt.
+    It will give you a todo to follow to handle the user prompt.
+    Don't call it if it's simply answering a question.
+
     """
     
-    
-    system_instruction = f"""
-    You are a professional video editor.
-    You receive a user prompt.
+    try: 
+        system_instruction = f"""
+        You are a professional Video Editor Planificator.
+        You have diffrent tools at your disposal to handle the user prompt.
 
-    ### TASK 
-    1. Analyze the user prompt and understand the user creative intention
-    2. Cook a creative intention to perform the user prompt
-    3. return a to do list to describe to an AI agent how to handle the user prompt, use following tools
-    
-    
-    
-    ### TOOLS access:
-    - get_project_structure : give informations about available media to use
-    - get_timeline_structure : use to get the structure of a timeline
-    - edit_timeline_structure : use to add clips, audio, effects, edit a timeline etc...
-    - open_timeline : use to open a timeline before editing it or grepping it
-    - labelize_audio : use to get music tempo, transcription of audio before using it 
-    
-    
-    you can use the followings common rules about video editing : 
-    
-    ### EXEMPLES: 
-    - SOCIAL MEDIA EDIT: define audience, duration, style, music
 
-    
-    """
-    
-    structured_output = {
-        "type": "array",
-        "items": {
-            "type": "string",
-            "description": "The todo to perform the user prompt"
+        Your task :
+        ### TASK 
+        1. Analyze the user prompt and understand the user creative intention
+        2. return a to do list to describe to an AI agent how to handle the user prompt, using following tools and constraints
+        
+        ### TOOLS ARCHITECTURE:
+        - get_project_structure : return the structure of the Premiere Pro project. Usefull to get the availables media and project architecture
+        - labelize_audio : return the downbeats or transcription of a media. Provide de media name and audio type (music or speech). 1 call per media
+        - edit_project_structure : this is a ReACT agent, use it to create sequences (also named timelines), bins, rename, move items, organize the project structure. Can handle multiple actions in one call. This tool has his own access to get_project_structure.
+            - edit_project_structure TOOLS (using nodeId to identify the item to modify or parent_nodeId to identify the path) : 
+                    - create_bin_tool
+                    - delete_bin_tool (only works with empty bins)
+                    - create_sequence_tool (width, height, framerate)
+                    - update_sequence_tool (width, height, framerate)
+                    - clone_sequence_tool (usefull to creat backups, new versions, alternative ideas)
+                    - modify_item_tool (rename, move anything)
+                    - move_batch_tool (move multiple items at once)
+                END of edit_project_structure TOOLS
+
+        - open_timeline : open a timeline (also named a sequence) before editing it or getting its structure. The others tools only have access to the opened timeline (also named a sequence).
+        - get_timeline_structure : return the structure of the opened timeline (also named a sequence). Usefull to get the edit architecture.
+        - edit_timeline : this is a ReACT agent, use it to edit the opened timeline (also named a sequence). Can handle multiple actions in one call. This tool has his own access to get_timeline_structure and get_project_structure.
+                - edit_timeline TOOLS (using ID which is the ID of the itme on the timeline)
+                    - insert_item_tool
+                    - insert_item_batch_tool (usefull for adding multiple items on music beats)
+                    - move_item_tool
+                    - delete_item_tool
+                    - add_marker_tool
+                    - edit_effect_tool (only lumetri, opacity, position, scale, crop)
+                    - add_text_tool
+                    - modify_text_tool
+                END of edit_timeline TOOLS
+
+        - export_sequence : export the opened timeline (also named a sequence) to a file. It will determinate by itself the export format.
+
+
+        ### OUTPUT
+        - describe the step and intention. The tool will handle the parametrization.
+        - Export only if asked by the user.
+
+        """
+        
+        structured_output = {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "description": "The precise description of the step to perform"
+            }
         }
-    }
-    
-    todo_list = gemini_call(prompt, system_instruction, structured_output, None, 0.2, "gemini-2.5-flash" )
-    
-    print(f"Todo list")
-    for todo in todo_list:
-        print(f"- {todo}")
-    
-    return todo_list
+
+
+
+        previsous_todo = {}
+
+
+
+        final_prompt = f"""
+
+
+
+        ### NEW USER PROMPT
+        {prompt}
+        """
+        
+        todo_list = gemini_call(final_prompt, system_instruction, structured_output, None, 0.2, config.MODEL_AGENT_NAME)
+        
+        print(f"Todo list")
+        for todo in todo_list:
+            print(f"- {todo}")
+        
+        return todo_list
+    except Exception as e:
+        print(f"❌ Error in get_creative_todo: {str(e)}")
+        return None
 
 
 
@@ -249,7 +247,7 @@ def create_agent_graph(model_name: str = "fast"):
              get_timeline_structure, edit_timeline, 
              open_timeline,
              labelize_audio,
-             get_creative_todo, 
+            #  get_creative_todo, 
              export_sequence,
              ]
     
@@ -264,6 +262,27 @@ def create_agent_graph(model_name: str = "fast"):
     def agent(state: AgentState):
         if config.STOP_REQUESTED:
             return {"messages": [AIMessage(content="Agent stopped by user.")]}
+        
+        # Vérifier s'il y a des tool calls en attente dans la file d'attente
+        if hasattr(config, 'PENDING_TOOL_CALLS_QUEUE') and config.PENDING_TOOL_CALLS_QUEUE:
+            # Prendre le premier tool call de la file d'attente
+            next_call = config.PENDING_TOOL_CALLS_QUEUE.pop(0)
+            print(f"🔄 Exécution du tool en file d'attente: {next_call['name']} (restants: {len(config.PENDING_TOOL_CALLS_QUEUE)})")
+            
+            # Créer un AIMessage avec le tool call
+            tool_call_message = AIMessage(
+                content="",
+                tool_calls=[{
+                    "name": next_call["name"],
+                    "args": next_call["args"],
+                    "id": f"call_{next_call['name']}_{hash(str(next_call['args']))}"
+                }],
+                additional_kwargs={},
+                response_metadata={"model_name": model.model_name}
+            )
+            return {"messages": [tool_call_message]}
+        
+        # Sinon, appeler le LLM normalement
         response = model.invoke(state["messages"])
         return {"messages": [response]}
     
@@ -287,41 +306,53 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
     """Exécute l'agent et streame les résultats sous forme de JSON."""
     # Définir le token global pour cette session
     config.AGENT_TOKEN = token
+    
+    # Initialiser la file d'attente des tool calls pour cette nouvelle session
+    config.PENDING_TOOL_CALLS_QUEUE = []
+
+    # Reset history if new conversation
+    if not existing_history:
+        config.COPILOT_HISTORY.reset()
+
+    config.COPILOT_HISTORY.add("message User", user_input)
+    
     app = create_agent_graph(model)
 
     # --- Gestion de l'historique ---
     conversation_history = [
         SystemMessage(content="""
         You are an expert Video Editing Orchestrator for Premiere Pro.
-        Your role is to understand the user's request and delegate the work to the appropriate specialized agent.
+        Your task is to understand the user's request and delegate the work to the appropriate specialized agent.
 
-        ### YOUR TEAM OF EXPERTS:
-        1.  **edit_project_structure**: Expert in organizing the project bin. Use it to create sequences, bins, or organize items.
-        2.  **edit_timeline**: The MASTER EDITOR. Capable of handling FULL editing tasks. It can add clips, music, text, effects, and adjust timing ALL IN ONE SESSION. He has his own access to get project structure and timeline structure. So no Need to send it to the agent.
-        3.  **get_project_structure** / **get_timeline_structure**: Analysts to retrieve information when you are unsure.
-        4.  **export_sequence**: Finalizer to export the result. 
+        ### TOOLS ARCHITECTURE:
 
-        ### KEY RULES FOR DELEGATION:
-        - **DO NOT MICROMANAGE:** If the user wants a video edit, delegate the ENTIRE task to `edit_timeline` in a single call. Do not split it into "add video" then "add audio". The `edit_timeline` agent is smart enough to handle the whole flow.
-        - **PASS CONTEXT:** When calling a tool, ensure the prompt contains all necessary creative details (mood, style, pacing).
-        - **VERIFY:** After a tool finishes, check the output to ensure the user's request is met.
+        - get_project_structure : return the structure of the Premiere Pro project. Usefull to get the availables media and project architecture
+        - labelize_audio : return the downbeats or transcription of a media. Provide de media name and audio type (music or speech). 1 call per media
+        - edit_project_structure : this is a ReACT agent, use it to create sequences, bins, rename, move items, organize the project structure. Can handle multiple actions in one call. This tool has his own access to get_project_structure.
+            - edit_project_structure TOOLS (using nodeId to identify the item to modify or parent_nodeId to identify the path) : 
+                    - create_bin_tool
+                    - delete_bin_tool (only works with empty bins)
+                    - create_sequence_tool (width, height, framerate)
+                    - update_sequence_tool (width, height, framerate)
+                    - clone_sequence_tool (usefull to creat backups, new versions, alternative ideas)
+                    - modify_item_tool (rename, move anything)
+                    - move_batch_tool (move multiple items at once)
+                END of edit_project_structure TOOLS
 
-        ### EXAMPLES:
+        - open_timeline : open a timeline (also named a sequence) before editing it or getting its structure. The others tools only have access to the opened timeline (also named a sequence).
+        - get_timeline_structure : return the structure of the opened timeline (also named a sequence). Usefull to get the edit architecture.
+        - edit_timeline : this is a ReACT agent, use it to edit the opened timeline (also named a sequence). Can handle multiple actions in one call. This tool has his own access to get_timeline_structure and get_project_structure.
+                - edit_timeline TOOLS (using ID which is the ID of the itme on the timeline)
+                    - insert_item_tool
+                    - insert_item_batch_tool (usefull for adding multiple items on music beats)
+                    - move_item_tool
+                    - delete_item_tool
+                    - add_marker_tool
+                    - edit_effect_tool (only lumetri, opacity, position, scale, crop)
+                    - add_text_tool
+                    - modify_text_tool
+                END of edit_timeline TOOLS
 
-        #### Example 1: Creating a Reel 
-        **User:** "Create a dynamic reel from the 'Travel' bin with upbeat music and subtitles."
-        **You:**
-        1.  Call `get_project_structure` to see available media. And labelize required audio if needed
-        2.  Call `edit_project_structure` to create a sequence "Travel_Reel" (1080x1920).
-        3.  Call `edit_timeline` with prompt: "Create a dynamic reel using clips from 'Travel' bin. Sync to upbeat music and add subtitles." (DELEGATE EVERYTHING)
-
-
-        #### Example 2: Create a Movie
-        **User:** "create a cinmeatic film with my rush"
-        **You:**
-        1.  Call `get_project_structure` to see available media and audio to use
-        2.  Call `edit_project_structure` to create a sequence cinematic.
-        3.  Call `edit_timeline`
         """),
     ]
     
@@ -358,11 +389,14 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
     
     thought_accumulator = ""
     tool_call_depth = 0  # profondeur d'appel des tools; 0 = appel top-level
+    tool_titles = {}  # Stocke les titres choisis aléatoirement pour chaque outil
 
     async for chunk in app.astream_events(inputs, version="v1"):
         if config.STOP_REQUESTED:
             print("🛑 Agent stopped by user request.")
             yield {"type": "thought", "content": "\n[Agent stopped by user]"}
+            if thought_accumulator.strip():
+                config.COPILOT_HISTORY.add("message renvoyé", thought_accumulator.strip())
             break
 
         kind = chunk["event"]
@@ -384,11 +418,22 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
 
             # Afficher uniquement pour les appels top-level (pas ceux déclenchés par un autre tool)
             if tool_call_depth == 0:
-                tool_info = TOOL_DISPLAY_MAPPING.get(tool_name, {"title": tool_name, "category": "default"})
+                # Log reflection before tool call
+                if thought_accumulator.strip():
+                    config.COPILOT_HISTORY.add("reflexion", thought_accumulator.strip())
+                    thought_accumulator = ""
+
+                config.COPILOT_HISTORY.add("tool appele", {"name": tool_name, "args": tool_args})
+
+                tool_info = TOOL_DISPLAY_MAPPING.get(tool_name, {"titles": [tool_name], "category": "default", "icon": "check.png"})
+                chosen_title = get_random_tool_title(tool_name)
+                tool_titles[tool_name] = chosen_title  # Stocker le titre pour tool_end
+                
                 yield {
                     "type": "tool_start",
-                    "title": tool_info["title"],
+                    "title": chosen_title,
                     "category": tool_info["category"],
+                    "icon": tool_info.get("icon", "check.png"),
                     "args": tool_args
                 }
 
@@ -407,8 +452,15 @@ async def run_agent_streaming(user_input: str,  existing_history: List[Dict[str,
             # Diminuer la profondeur et n'émettre l'événement de fin que pour le top-level
             tool_call_depth = max(0, tool_call_depth - 1)
             if tool_call_depth == 0:
-                tool_info = TOOL_DISPLAY_MAPPING.get(tool_name, {"title": tool_name, "category": "default"})
+                config.COPILOT_HISTORY.add("tool result", {"name": tool_name, "result": tool_output})
+
+                tool_info = TOOL_DISPLAY_MAPPING.get(tool_name, {"titles": [tool_name], "category": "default"})
+                # Récupérer le titre stocké lors du tool_start
+                chosen_title = tool_titles.get(tool_name, get_random_tool_title(tool_name))
                 yield {
                     "type": "tool_end",
-                    "title": tool_info["title"]
+                    "title": chosen_title
                 }
+
+    if thought_accumulator.strip():
+        config.COPILOT_HISTORY.add("message renvoyé", thought_accumulator.strip())

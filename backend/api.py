@@ -7,6 +7,7 @@ import threading
 import signal
 import uuid
 import asyncio
+from contextlib import asynccontextmanager
 from starlette.responses import StreamingResponse
 import time
 import warnings
@@ -56,26 +57,29 @@ def shutdown_after_timeout():
             time_since_last_activity = now - last_activity
         
         if time_since_last_activity >= inactivity_timeout:
-            # print(f"⏳ Inactivité détectée ({int(time_since_last_activity)}s). Arrêt de l'API...")
+            print(f"⏳ Inactivité détectée ({time.time()}s). Arrêt de l'API...")
             os.kill(os.getpid(), signal.SIGINT)
             return
         
         # Log périodique pour vérifier que le thread fonctionne (toutes les 5 minutes)
-        if int(time_since_last_activity) % 300 == 0 and int(time_since_last_activity) > 0:
+        if int(time_since_last_activity) % 60 == 0 and int(time_since_last_activity) > 0:
             remaining = int(inactivity_timeout - time_since_last_activity)
-            # print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
+            print(f"⏱️  Inactivité: {int(time_since_last_activity)}s. Arrêt dans {remaining}s si pas d'activité.")
         
         time.sleep(CHECK_INTERVAL_SECONDS)
 
 
 
-app = FastAPI(version="2.0.0",)
-
-@app.on_event("startup")
-def start_shutdown_monitor():
-    """Démarre le thread de surveillance uniquement au lancement de l'app (worker)."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup: Démarre le thread de surveillance uniquement au lancement de l'app (worker)
     threading.Thread(target=shutdown_after_timeout, daemon=True).start()
     config.REASONING_QUEUE = asyncio.Queue()
+    yield
+    # Shutdown: Add any cleanup code here if needed in the future
+
+app = FastAPI(version="2.0.0", lifespan=lifespan)
 
 # Middleware pour tracker automatiquement toutes les requêtes
 @app.middleware("http")
@@ -106,6 +110,51 @@ def stop_agent():
     config.STOP_REQUESTED = True
     config.API_STATUS = "End"
     return {"status": "stop_requested"}
+
+
+class FeedbackRequest(BaseModel):
+    token: str
+    feedback: str  # "like" or "dislike"
+
+@app.post("/submit-feedback")
+def submit_feedback(request: FeedbackRequest):
+    """
+    Endpoint pour soumettre le feedback utilisateur.
+    Récupère le COPILOT_HISTORY et le transmet à l'API cloud.
+    """
+    try:
+        # Récupérer l'historique du copilot
+        raw_history = config.COPILOT_HISTORY.get_history()
+        
+        # Sérialiser l'historique pour le rendre JSON-compatible
+        serialized_history = []
+        for entry in raw_history:
+            serialized_entry = {
+                "type": entry.get("type"),
+                "timestamp": entry.get("timestamp"),
+                "metadata": entry.get("metadata", {}),
+                "content": str(entry.get("content"))  # Convertir en string pour éviter les erreurs de sérialisation
+            }
+            serialized_history.append(serialized_entry)
+        
+        # Envoyer les données à l'API cloud
+        response = requests.post(
+            f"{config.API_URL}/submit-feedback",
+            json={
+                "token": request.token,
+                "feedback": request.feedback,
+                "history": serialized_history
+            },
+            headers={"Authorization": f"Bearer {request.token}"}
+        )
+        
+        if response.status_code == 200:
+            return {"status": "success", "message": "Feedback submitted"}
+        else:
+            return {"status": "error", "message": f"Cloud API error: {response.status_code}"}
+    except Exception as e:
+        print(f"Error submitting feedback: {e}")
+        return {"status": "error", "message": str(e)}
  
 
 
@@ -171,6 +220,23 @@ async def stream_chat(request: StreamChatRequest):
     history = CONVERSATION_HISTORIES.get(conversation_id, [])
 
     async def event_generator():
+        # Vérifier la limite de prompts quotidiens
+        try:
+            limit_check = requests.get(
+                f"{config.API_URL}/check-prompt-limit",
+                headers={"Authorization": f"Bearer {request.token}"}
+            )
+            if limit_check.status_code == 200:
+                limit_data = limit_check.json()
+                if not limit_data.get("allowed", True):
+                    # Limite atteinte - renvoyer un message naturel
+                    error_message = f"You have reached your daily limit of {limit_data.get('limit', 25)} messages. Please upgrade to a Pro subscription for unlimited access, or wait until tomorrow for your limit to reset."
+                    yield json.dumps({"type": "answer", "content": error_message}, ensure_ascii=False) + "\n"
+                    return
+        except Exception as e:
+            print(f"Error checking prompt limit: {e}")
+            # Continuer même en cas d'erreur de vérification
+        
         # D'abord, on envoie l'ID de la conversation au client s'il est nouveau
         if not request.conversation_id:
             yield json.dumps({"type": "conversation_start", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
@@ -350,6 +416,17 @@ def generation(request: GenerationRequest):
             return {"result": result}
     except HTTPException:
         raise
+    except PermissionError as e:
+        # Erreur d'abonnement ou de crédits insuffisants
+        error_msg = str(e).replace("subscription_error: ", "")
+        print(f"Erreur d'abonnement: {error_msg}")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error_type": "subscription",
+                "message": "Insufficient credits. Please recharge your credits on premierecopilot.com to access this feature."
+            }
+        )
     except Exception as e:
         print(f"Erreur lors de la génération: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la génération: {str(e)}")

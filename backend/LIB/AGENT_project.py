@@ -106,7 +106,6 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
         print(f"❌ Erreur lors de l'appel à l'API relai: {str(e)}")
         raise Exception(f"Erreur lors de l'appel à l'API relai: {str(e)}")
 
-
 def gptoss_call(prompt, system_instruction, structured_output = None, tool_list = None, temperature= 0.2,  model = "openai/gpt-oss-120b"): 
 
 
@@ -277,17 +276,18 @@ async def main_fast_labelize(list_clip):
     return "done"
 
 class GetProjectStructure(BaseModel):
+    thought :str = Field(description="Add a thought (2-4 sentences) to explain why you call this tool.")
     include_metadata :bool = Field(default=False, description="Use it only if you need to know the description of the video and images to perform the task. Slower")
     include_audio :bool = Field(default=False, description="Use it only if you need to know the downbeats of the audio to perform the task. Slower")
     skip_labelize :bool = Field(default=False, description="If True, skip the labelization process")
  
 @tool("get_project_structure", args_schema=GetProjectStructure)
-async def get_project_structure(include_metadata: bool = False, skip_labelize: bool = False, include_audio: bool = False):
+async def get_project_structure(thought:str, include_metadata: bool = False, skip_labelize: bool = False, include_audio: bool = False):
     """
-    Returns the JSON structure of the Premiere Pro project
-    Usefull ot get the availables clips, musics, audio, folders
+    Returns the structure of the Premiere Pro project
+    Usefull ot get the availables clips, musics, audio, folders, and project architecture
     """
-
+    print(thought)
     try : 
         call_id = str(uuid.uuid4())
 
@@ -654,7 +654,7 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
         # Récupérer le contexte initial
         # final_context = await get_project_context(prompt, include_metadata)         
 
-        initial_structure = await get_project_structure.ainvoke({"include_metadata": False})
+        initial_structure = await get_project_structure.ainvoke({"thought": "", "include_metadata": False})
         
         # Configuration de l'agent ReACT
         max_iterations = 20
@@ -782,6 +782,7 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                 await config.REASONING_QUEUE.put(reasoning)
 
             print(f"💭 Reasoning: {reasoning}")
+            config.COPILOT_HISTORY.add("reflexion", reasoning)
 
             # Cas 2 : Pas d'actions mais tâche non complétée = problème
             if not liste_actions:
@@ -805,6 +806,9 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
                 Your task is to format the actions send by the Reasoning phase to the format expected by the JavaScript function.
                             """.strip()
             liste_actions = gemini_call(action_prompt, system_instruction, None, EDIT_PROJECT_STRUCTURE_TOOL_LIST, 0.3, MODEL_REACT_PROJECT_STRUCTURE_TOOL)
+            
+            for action in liste_actions:
+                config.COPILOT_HISTORY.add("tool appele", action)
             
             config.API_STATUS = f"Executing actions... (iteration {iteration})"
 
@@ -909,10 +913,11 @@ async def edit_project_structure(prompt: str, include_metadata: bool = False):
             
             # Récupérer la structure après les actions
             time.sleep(1)
-            post_action_structure = await get_project_structure.ainvoke({"include_metadata": False})
+            post_action_structure = await get_project_structure.ainvoke({"thought": "", "include_metadata": False})
             differences, observation = compare_project_structures(initial_structure, post_action_structure)
             
             print(f"📊 Observation: {observation}")
+            config.COPILOT_HISTORY.add("tool result", {"observation": observation, "differences": differences})
             
             # Ajouter à l'historique
             history.append({
@@ -1030,7 +1035,7 @@ async def labelize_audio(audioType: str, audioName: str):
     
     # 1. Récupération du path depuis la structure du projet & Vérifier si l'audio est déjà labelisé
     try : 
-        project_V0 = await get_project_structure.ainvoke({"include_metadata": False, "skip_labelize": True})
+        project_V0 = await get_project_structure.ainvoke({"thought": "", "include_metadata": False, "skip_labelize": True})
         project_V0 = json.loads(project_V0)
         
         
@@ -1056,7 +1061,7 @@ async def labelize_audio(audioType: str, audioName: str):
         nodeId = gemini_call(audioName, system_instruction, structured_output, None, 0.2, "gemini-2.5-flash-lite" )['nodeId']
 
         
-        project_V0 = await get_project_structure.ainvoke({"include_metadata": True, "skip_labelize": True})
+        project_V0 = await get_project_structure.ainvoke({"thought": "", "include_metadata": True, "skip_labelize": True})
         project_V0 = json.loads(project_V0)
         
         
@@ -1174,23 +1179,28 @@ async def labelize_audio(audioType: str, audioName: str):
                 # clip_found["beats"] = beats
                 clip_found["json_path"] = json_path
             else:
-                clip_db.append({
+                clip_found = {
                     "mediaPath": audio_path,
                     "downbeats": downbeats,
                     # "beats": beats,
                     "json_path": json_path
-                })
+                }
+                clip_db.append(clip_found)
         elif audioType == "speech":
             if clip_found is not None:
                 clip_found["transcription"] = transcription
             else:
-                clip_db.append({
-                "mediaPath": audio_path,
-                "transcription": transcription,
-            })
+                clip_found = {
+                    "mediaPath": audio_path,
+                    "transcription": transcription,
+                }
+                clip_db.append(clip_found)
 
         with open(path_clip_db, 'w', encoding='utf-8') as f:
             json.dump(clip_db, f, indent=2, ensure_ascii=False)
+
+        return str( "Downbeats : " + str( clip_found["downbeats"] ) )if audioType == "music" else str( "Transcription : " + str( clip_found["transcription"]["segments"]))
+
     except Exception as e:
         import traceback
         tb = traceback.extract_tb(e.__traceback__)
@@ -1204,12 +1214,5 @@ async def labelize_audio(audioType: str, audioName: str):
             message = f"Erreur labelize audio: {str(e)}"
         print(message)
         return "Error: " + message
-
-
-
-
-
-    return str( "Downbeats : " + str( clip_found["downbeats"] ) )if audioType == "music" else str( "Transcription : " + str( clip_found["transcription"]["segments"]))
-
 
 

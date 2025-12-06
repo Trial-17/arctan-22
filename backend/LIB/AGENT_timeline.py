@@ -284,6 +284,10 @@ async def add_text(texts):
                         "minItems": 4,
                         "maxItems": 4
                     },
+                    # "font": {
+                    #     "type": "string",
+                    #     "description": "The font name to use. Only the name. DO not include the path, or the bold or italic modifiers."
+                    # },
                     
                     # ANIMATION
                     "enable_animation": {
@@ -467,7 +471,7 @@ async def add_text(texts):
                 "no_piste": import_result['no_piste'],
                 "settings": text_config
             }
-            
+            print(edit_args)
             call_id = str(uuid.uuid4())
             edit_script = f"$._MYFUNCTIONS.editText({json.dumps(edit_args)});"
             
@@ -1091,8 +1095,10 @@ class OpenTimeline(BaseModel):
 @tool("open_timeline", args_schema=OpenTimeline)
 async def open_timeline(timeline_name: str):
     """
-    Open a timeline in Premiere Pro by its name
+    Open a timeline (or open sequence, it's the same) in Premiere Pro by its name
     Usefull to open a timeline before editing it or grepping it
+    Use this tool before using edit_timeline.
+    Use this tool each time you need to edit a timeline. 
     
     """
     try:
@@ -1171,7 +1177,7 @@ class GetTimelineStructure(BaseModel):
 @tool("get_timeline_structure", args_schema=GetTimelineStructure)
 async def get_timeline_structure(include_metadata: bool = False, include_effects: bool = False):
     """
-    Returns the JSON structure of the active timeline in Premiere Pro
+    Returns the structure of the active timeline (also named a sequence) in Premiere Pro
     Usefull to read the timeline informations
 
     """
@@ -1323,10 +1329,21 @@ async def get_timeline_structure(include_metadata: bool = False, include_effects
         result = video_items + audio_items_uniques
     
         return result, FPS, width, height
-    
+
     except Exception as e:
-        print(f"Erreur get_timeline_structure: {str(e)}")
-        return "Error: " + str(e)
+        import traceback
+        tb = traceback.extract_tb(e.__traceback__)
+        if tb:
+            log_lignes = []
+            for trace in tb:
+                log_lignes.append(f"Fichier \"{trace.filename}\", ligne {trace.lineno}, dans {trace.name}")
+            log_complet = "\n".join(log_lignes)
+            message = f"Erreur get_timeline_structure : {str(e)}\nTraceback complet :\n{log_complet}"
+        else:
+            message = f"Erreur get_timeline_structure: {str(e)}"
+        print(message)
+        return "Error: " + message
+
     
 
 def compare_timeline_structures(initial_structure: List[Dict], final_structure: List[Dict]) -> Dict:
@@ -1605,16 +1622,12 @@ async def edit_timeline(prompt: str, include_effects: bool = False, include_meta
     """
     The Master Editing Agent for the active sequence.
     Capable of performing complex, multi-step editing tasks autonomously.
+    This tool can only edit the active sequence. It cannot edit other sequences, neither open it. Use the open_timeline tool for that.
     
     CAPABILITIES:
     - Cook a complete edit from a single prompt
     - Modifiy an already existing edit. 
     - autonomous access to the timeline structure and project structure.
-
-    USE THIS TOOL FOR:
-    - "Make a vlog from these clips"
-    - "Insert b-roll over the interview"
-    - Any task requiring modification of the timeline content.
     """
     
     try:
@@ -1753,8 +1766,8 @@ async def edit_timeline(prompt: str, include_effects: bool = False, include_meta
             # Appel au LLM pour le reasoning
 
             # sauvegarder dans un .txt le reasoning et le system instruction
-            # with open("iteration_{}.txt".format(iteration), "w") as f:
-            #     f.write(reasoning_prompt + "\n\n" + system_instruction)
+            with open("iteration_{}.txt".format(iteration), "w") as f:
+                f.write(reasoning_prompt + "\n\n" + system_instruction)
 
 
 
@@ -1768,6 +1781,8 @@ async def edit_timeline(prompt: str, include_effects: bool = False, include_meta
             if config.REASONING_QUEUE:
                 print(reasoning)
                 await config.REASONING_QUEUE.put(reasoning)
+
+            config.COPILOT_HISTORY.add("reflexion", reasoning)
 
             # print(f"📋 Planned actions: {liste_actions}")
             
@@ -1795,6 +1810,9 @@ async def edit_timeline(prompt: str, include_effects: bool = False, include_meta
                 """.strip()
                 
             liste_actions = gemini_call(action_prompt, system_instruction, None, EDIT_TIMELINE_STRUCTURE_TOOL_LIST, 0.3, MODEL_REACT_PROJECT_STRUCTURE_TOOL)
+            
+            for action in liste_actions:
+                config.COPILOT_HISTORY.add("tool appele", action)
             
             config.API_STATUS = f"Executing actions... (iteration {iteration})"
             
@@ -1936,9 +1954,9 @@ async def edit_timeline(prompt: str, include_effects: bool = False, include_meta
                         liste_TC = [x/FPS for x in range(int(FPS))]
 
 
-                        liste_nodeId = actions["args"]["list_nodeId"]
-                        liste_start = actions["args"]["list_start"]
-                        end = actions["args"]["last_end"]
+                        liste_nodeId = action["args"]["list_nodeId"]
+                        liste_start = action["args"]["list_start"]
+                        end = action["args"]["last_end"]
 
                         for i in range(min(len(liste_nodeId), len(liste_start))):
                             action = {
@@ -1992,6 +2010,7 @@ async def edit_timeline(prompt: str, include_effects: bool = False, include_meta
             differences, observation = compare_timeline_structures(current_timeline, post_action_timeline)
             
             print(f"📊 Observation: {observation}")
+            config.COPILOT_HISTORY.add("tool result", {"observation": observation, "differences": differences})
             
             # Ajouter à l'historique
             history.append({

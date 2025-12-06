@@ -405,7 +405,14 @@ def main_generation(input_data, token):
         response = requests.post(url, headers=headers, data=payload, files=files_to_send)
         print(f"API Response Status Code: {response.status_code}")
         
-        if response.status_code != 200:
+        if response.status_code == 403:
+            # Erreur d'abonnement ou de crédits
+            try:
+                error_detail = response.json().get('detail', 'Inactive or insufficient subscription')
+            except:
+                error_detail = 'Inactive or insufficient subscription'
+            raise PermissionError(f"subscription_error: {error_detail}")
+        elif response.status_code != 200:
             try:
                 error_detail = response.json().get('detail', response.text)
             except:

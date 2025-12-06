@@ -265,6 +265,17 @@ class PremiereGPT_LLM(BaseChatModel):
         
         # Si c'est une liste de function calls, créer un AIMessage avec tool_calls
         if isinstance(response, list) and response:
+            # ⚠️ EXÉCUTION SÉQUENTIELLE: Stocker les tool calls restants pour les exécuter un par un
+            if len(response) > 1:
+                from LIB import config
+                # Stocker les tool calls 2, 3, 4... pour les exécuter plus tard
+                remaining_calls = response[1:]
+                if not hasattr(config, 'PENDING_TOOL_CALLS_QUEUE'):
+                    config.PENDING_TOOL_CALLS_QUEUE = []
+                config.PENDING_TOOL_CALLS_QUEUE.extend(remaining_calls)
+                print(f"📋 {len(remaining_calls)} tool call(s) supplémentaire(s) mis en file d'attente (total: {len(config.PENDING_TOOL_CALLS_QUEUE)})")
+                response = [response[0]]
+            
             # Convertir les function calls au format LangChain
             tool_calls = []
             for call in response:

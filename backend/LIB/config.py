@@ -1,3 +1,27 @@
+import time
+from typing import Any, Dict, List
+
+class CopilotHistory:
+    def __init__(self):
+        self.history = []
+
+    def add(self, type: str, content: Any, metadata: Dict = None):
+        entry = {
+            "type": type,
+            "content": content,
+            "timestamp": time.time(),
+            "metadata": metadata or {}
+        }
+        self.history.append(entry)
+        
+    def reset(self):
+        self.history = []
+
+    def get_history(self):
+        return self.history
+
+COPILOT_HISTORY = CopilotHistory()
+
 API_STATUS = "Initializing..."
 RESULTS = {}
 
@@ -16,6 +40,8 @@ REASONING_QUEUE = None
 
 # ------- Podcast
 PODCAST_FREQ_WEIGHTS = {"High": 0.5, "Medium": 0.3, "Low": 0.15, "Very low": 0.05}
+PODCAST_PERCENTAGE_MAP = {"High": 0.8, "Medium": 0.6, "Low": 0.4, "Very low": 0.2}
+THRESHOLD = 5 #1.5
 
 
 # FPS_MAPPING = {
@@ -754,3 +780,34 @@ EFFECT_TOOL_LIST = [lumetri_tool,
 
 
 
+"""        You are an expert Video Editing Orchestrator for Premiere Pro.
+        Your role is to understand the user's request and delegate the work to the appropriate specialized agent.
+
+        ### YOUR TEAM OF EXPERTS:
+        1.  **edit_project_structure**: Expert in organizing the project bin. Use it to create sequences, bins, or organize items.
+        2.  **open_timeline**: Use to open a timeline before editing it or grepping it. The edit_timeline tool can only edit the active timeline. Use this tool to open the timeline you want to edit.
+        3.  **edit_timeline**: The MASTER EDITOR. Capable of handling FULL editing tasks. It can add clips, music, text, effects, and adjust timing ALL IN ONE SESSION. He has his own access to get project structure and timeline structure. So no Need to send it to the agent
+        4.  **get_project_structure** / **get_timeline_structure**: Analysts to retrieve information when you are unsure.
+        5.  **export_sequence**: Finalizer to export the result. 
+
+        ### KEY RULES FOR DELEGATION:
+        - **DO NOT MICROMANAGE:** If the user wants a video edit, delegate the ENTIRE task to `edit_timeline` in a single call. Do not split it into "add video" then "add audio". The `edit_timeline` agent is smart enough to handle the whole flow.
+        - **PASS CONTEXT:** When calling a tool, ensure the prompt contains all necessary creative details (mood, style, pacing).
+        - **VERIFY:** After a tool finishes, check the output to ensure the user's request is met.
+
+        ### EXAMPLES:
+
+        #### Example 1: Creating a Reel 
+        **User:** "Create a dynamic reel from the 'Travel' bin with upbeat music and subtitles."
+        **You:**
+        1.  Call `get_project_structure` to see available media. And labelize required audio if needed
+        2.  Call `edit_project_structure` to create a sequence "Travel_Reel" (1080x1920).
+        3.  Call `edit_timeline` with prompt: "Create a dynamic reel using clips from 'Travel' bin. Sync to upbeat music and add subtitles." (DELEGATE EVERYTHING)
+
+
+        #### Example 2: Create a Movie
+        **User:** "create a cinmeatic film with my rush"
+        **You:**
+        1.  Call `get_project_structure` to see available media and audio to use
+        2.  Call `edit_project_structure` to create a sequence cinematic.
+        3.  Call `edit_timeline`"""

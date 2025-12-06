@@ -84,7 +84,7 @@ def gemini_call(prompt, system_instruction, structured_output = None, tool_list 
 
 
 
-def configure_export_preset(params, preset_template_path = None):
+def configure_export_preset(params):
     """
     Configure and update the export preset with specified parameters
     
@@ -111,23 +111,18 @@ def configure_export_preset(params, preset_template_path = None):
     """
     try:
         # Define preset template path
-        if preset_template_path is None:
-            documents_preset_dir = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot"
-            documents_preset_path = documents_preset_dir / "EXPORT_PRESET.epr"
-            documents_preset_dir.mkdir(parents=True, exist_ok=True)
-            
-            if not documents_preset_path.exists():
-                project_root = Path(__file__).parent.parent.parent.parent
-                source_preset = project_root / "render" / "EXPORT_PRESET.epr"
-                if source_preset.exists():
-                    shutil.copy2(source_preset, documents_preset_path)
-                    print(f"  📦 Preset copied to: {documents_preset_path}")
+        documents_preset_dir = Path.home() / "Documents" / "Adobe" / "Premiere Pro" / "Premiere Copilot"
+        documents_preset_path = documents_preset_dir / "EXPORT_PRESET.epr"
+        documents_preset_dir.mkdir(parents=True, exist_ok=True)
+        
+        if not documents_preset_path.exists():
+            project_root = Path(__file__).parent.parent.parent.parent
+            source_preset = project_root / "render" / "EXPORT_PRESET.epr"
+            if source_preset.exists():
+                shutil.copy2(source_preset, documents_preset_path)
+                print(f"  📦 Preset copied to: {documents_preset_path}")
 
-
-
-
-
-            preset_template_path = documents_preset_path
+        preset_template_path = documents_preset_path
         
         # Validate input params
         if not isinstance(params, dict):
@@ -323,6 +318,7 @@ async def export_sequence(prompt: str):
     2. Uses an LLM to determine the best export parameters based on your prompt and the sequence settings
     3. Configures the export preset
     4. Triggers the export in Adobe Media Encoder
+    5. It will not start the rendering, but preapre it in Media Encoder
     """
     try:
         config.API_STATUS = "Reading sequence settings..."
@@ -452,7 +448,7 @@ async def export_sequence(prompt: str):
         }
         
         # Wait for export trigger
-        timeout = 30
+        timeout = 120
         start_time = time.time()
         result = None
         
@@ -473,13 +469,13 @@ async def export_sequence(prompt: str):
         try:
             export_result = json.loads(result)
             if export_result.get("success"):
-                return f"""✅ Export started!
+                return f"""✅ Export lauched!
                 
-**File:** {export_result.get('outputPath')}
-**Settings:** {export_params['width']}x{export_params['height']} @ {export_params['fps']}fps ({export_params['targetBitrate']} Mbps)
-**Job ID:** {export_result.get('jobId')}
+            **File:** {export_result.get('outputPath')}
+            **Settings:** {export_params['width']}x{export_params['height']} @ {export_params['fps']}fps ({export_params['targetBitrate']} Mbps)
+            **Job ID:** {export_result.get('jobId')}
 
-The file will appear in your Documents folder shortly."""
+            The file has been sent to Adobe Media Encoder. The default export path is your Documents folder."""
             else:
                 return f"❌ Export failed: {export_result.get('description')}"
         except:
