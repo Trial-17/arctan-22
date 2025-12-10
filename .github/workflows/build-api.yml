@@ -14,9 +14,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             platform: Mac-ARM
-          - os: macos-13
+          - os: macos-15
             platform: Mac-Intel
 
     # Utilise la machine virtuelle définie dans la matrice
