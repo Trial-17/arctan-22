@@ -59,3 +59,5 @@ backend/build.sh
 backend/PremiereCopilot.spec
 backend/LIB
 backend/api.py
+backend/config.py
+config.py
