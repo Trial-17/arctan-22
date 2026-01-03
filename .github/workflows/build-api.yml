@@ -88,23 +88,46 @@ jobs:
         shell: bash
 
       # 6. Signer correctement tout le bundle PyInstaller
-      - name: Sign PyInstaller Bundle (Robust Method)
+      # - name: Sign PyInstaller Bundle (Robust Method)
+      #   run: |
+      #     SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          
+      #     echo "Using Application signing identity: $SIGNING_IDENTITY"
+
+      #     # 1. Signe d'abord toutes les librairies et binaires internes avec les droits
+      #     echo "--- Signing all internal binaries and libraries ---"
+      #     find dist/PremiereCopilot/_internal -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist {} \;
+
+      #     # 2. Signe l'exécutable principal en dernier avec les droits
+      #     echo "--- Signing the main executable ---"
+      #     codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist dist/PremiereCopilot
+
+      #     # 3. Vérification finale et stricte de la signature
+      #     echo "--- Verifying final bundle signature ---"
+          # codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
+
+      # 6. Signer correctement tout le bundle PyInstaller (Méthode Manuelle Stricte)
+      - name: Sign PyInstaller Bundle (Correct Method)
         run: |
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          
-          echo "Using Application signing identity: $SIGNING_IDENTITY"
+          echo "Using Identity: $SIGNING_IDENTITY"
 
-          # 1. Signe d'abord toutes les librairies et binaires internes avec les droits
-          echo "--- Signing all internal binaries and libraries ---"
-          find dist/PremiereCopilot/_internal -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist {} \;
+          # 1. Nettoyer les fichiers gênants (souvent créés par PyInstaller)
+          find dist/PremiereCopilot -name "*.DS_Store" -delete
 
-          # 2. Signe l'exécutable principal en dernier avec les droits
-          echo "--- Signing the main executable ---"
-          codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist dist/PremiereCopilot
+          # 2. Signer les frameworks et dylibs internes (Inside-Out)
+          # On signe tout ce qui est .so, .dylib, ou binaire dans _internal
+          echo "--- Signing internal libs ---"
+          find dist/PremiereCopilot/_internal -type f \( -name "*.so" -o -name "*.dylib" -o -perm +111 \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {} \;
 
-          # 3. Vérification finale et stricte de la signature
-          echo "--- Verifying final bundle signature ---"
-          codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
+          # 3. Signer l'exécutable principal (Le fichier binaire, pas le dossier)
+          echo "--- Signing main executable ---"
+          # Attention : PyInstaller crée un dossier "PremiereCopilot" ET un binaire "PremiereCopilot" dedans
+          codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist "dist/PremiereCopilot/PremiereCopilot"
+
+          # 4. Vérification
+          echo "--- Verifying ---"
+          codesign --verify --verbose "dist/PremiereCopilot/PremiereCopilot"
 
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
@@ -173,15 +196,23 @@ jobs:
                    --version 1.0 \
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
+      
+      # 10. Notariser et agrafer l'installeur PKG (Native notarytool)
+      - name: Notarize and Staple PKG
+        run: |
+          # Création du profil temporaire pour notarytool
+          xcrun notarytool store-credentials "notary-profile" \
+            --apple-id "${{ secrets.APPLE_ID }}" \
+            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
 
-      # 10. Notariser et agrafer l'installeur PKG (Mise en pause)
-      # - name: Notarize and Staple PKG Installer
-      #   uses: lando/notarize-action@v2
-      #   with:
-      #     product-path: build/PremiereCopilot-Installer.pkg
-      #     appstore-connect-username: ${{ secrets.APPLE_ID }}
-      #     appstore-connect-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      #     appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+          echo "--- Submitting to Apple Notary Service ---"
+          xcrun notarytool submit build/PremiereCopilot-Installer.pkg \
+            --keychain-profile "notary-profile" \
+            --wait
+
+          echo "--- Stapling Ticket ---"
+          xcrun stapler staple build/PremiereCopilot-Installer.pkg
 
       # 11. Uploader l'artefact final
       - name: Upload PKG Installer
