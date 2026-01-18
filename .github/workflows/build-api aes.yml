@@ -1,5 +1,5 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build macOS Installers
+name: Build macOS AES
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
