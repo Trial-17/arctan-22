@@ -214,9 +214,14 @@ jobs:
           echo "--- Stapling Ticket ---"
           xcrun stapler staple build/PremiereCopilot-Installer.pkg
 
-      # 11. Uploader l'artefact final
-      - name: Upload PKG Installer
+      # 11. Créer le ZIP final avec l'installeur et le Quickstart.pdf
+      - name: Create Release ZIP
+        run: |
+          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf
+
+      # 12. Uploader l'artefact final (ZIP)
+      - name: Upload Installer ZIP
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}
-          path: build/PremiereCopilot-Installer.pkg
+          path: build/PremiereCopilot-Installer-${{ matrix.platform }}.zip

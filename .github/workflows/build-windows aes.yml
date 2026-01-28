@@ -77,10 +77,15 @@ jobs:
           # Assurez-vous que ce chemin vers votre script Inno Setup est correct
           path: PremiereCopilotInstaller.iss
 
-      # 9. Uploader l'installeur EXE final comme un "artefact"
-      - name: Upload EXE Installer
+      # 9. Créer le ZIP final avec l'installeur EXE et le Quickstart.pdf
+      - name: Create Release ZIP
+        run: |
+          Compress-Archive -Path "Output/PremiereCopilot-Setup.exe", "Quickstart.pdf" -DestinationPath "Output/PremiereCopilot-Installer-Windows.zip"
+        shell: pwsh
+
+      # 10. Uploader l'installeur ZIP final
+      - name: Upload EXE Installer ZIP
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-Windows
-          # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
-          path: Output/PremiereCopilot-Setup.exe
+          path: Output/PremiereCopilot-Installer-Windows.zip
