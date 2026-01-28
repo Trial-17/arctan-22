@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionList>
-  <Extension Id="com.example.duplicatescleaner.panel">
+  <Extension Id="com.example.premieregpt.panel">
     <HostList>
       <Host Name="AEFT" Port="8860"/>
       <Host Name="AME" Port="8861"/>
