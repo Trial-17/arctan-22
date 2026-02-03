@@ -1,5 +1,5 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build macOS Installers
+name: Build macOS DMG 
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
@@ -236,8 +236,8 @@ jobs:
           ARGS+=("--hide-extension" "PremiereGPTBeta")
           
           # Le lien symbolique (Cible) à droite
-          # On crée un lien direct vers le dossier extensions Adobe
-          ARGS+=("--symlink" "Install to Adobe" "/Library/Application Support/Adobe/CEP/extensions")
+          # On crée le lien manuellement dans le dossier source car l'option --symlink n'est pas supportée par cette version
+          ln -s "/Library/Application Support/Adobe/CEP/extensions" "build/dmg_staging/Install to Adobe"
           ARGS+=("--icon" "Install to Adobe" "600" "210")
 
           echo "--- Creating DMG ---"
