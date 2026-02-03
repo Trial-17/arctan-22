@@ -1,0 +1,270 @@
+# Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
+name: Build macOS Installers
+
+# Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
+on:
+  push:
+    branches: [ main ]
+  # Permet aussi de le lancer manuellement depuis l'interface de GitHub
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    # Stratégie de Matrice : exécute les mêmes étapes sur les deux architectures Mac
+    strategy:
+      matrix:
+        include:
+          - os: macos-15
+            platform: Mac-ARM
+          - os: macos-15
+            platform: Mac-Intel
+
+    # Utilise la machine virtuelle définie dans la matrice
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # 1. Récupère le code de votre dépôt
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Importer et vérifier les certificats Apple (Fail Fast)
+      - name: Import and Verify Apple Certificates
+        env:
+          APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
+          APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
+          INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
+        run: |
+          # Importation des certificats séparés
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
+          security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -A -T /usr/bin/codesign
+          echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
+          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A -T /usr/bin/productsign -T /usr/bin/pkgbuild
+          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+
+          # Vérification que les deux identités sont bien présentes
+          echo "--- Available Identities ---"
+          security find-identity -v build.keychain
+          echo "------------------------------------"
+          
+          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
+          if [ -z "$APP_IDENTITY" ]; then
+            echo "::error::Developer ID Application certificate not found."
+            exit 1
+          fi
+          
+          # Correction : On cherche dans toutes les identités
+          INSTALLER_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer")
+          if [ -z "$INSTALLER_IDENTITY" ]; then
+            echo "::error::Developer ID Installer certificate not found."
+            exit 1
+          fi
+          
+          echo "✅ Both Application and Installer certificates found in the keychain."
+
+      # 3. Configure l'environnement Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 4. Crée l'environnement virtuel et installe les dépendances
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+        shell: bash
+
+      # 5. Construire l'API avec PyInstaller
+      - name: Build API with PyInstaller
+        run: |
+          source venv/bin/activate
+          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/app.py
+        shell: bash
+
+      # 6. Signer correctement tout le bundle PyInstaller
+      # - name: Sign PyInstaller Bundle (Robust Method)
+      #   run: |
+      #     SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          
+      #     echo "Using Application signing identity: $SIGNING_IDENTITY"
+
+      #     # 1. Signe d'abord toutes les librairies et binaires internes avec les droits
+      #     echo "--- Signing all internal binaries and libraries ---"
+      #     find dist/PremiereCopilot/_internal -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist {} \;
+
+      #     # 2. Signe l'exécutable principal en dernier avec les droits
+      #     echo "--- Signing the main executable ---"
+      #     codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist dist/PremiereCopilot
+
+      #     # 3. Vérification finale et stricte de la signature
+      #     echo "--- Verifying final bundle signature ---"
+          # codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
+
+      # 6. Signer correctement tout le bundle PyInstaller (Méthode Manuelle Stricte)
+      - name: Sign PyInstaller Bundle (Correct Method)
+        run: |
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          echo "Using Identity: $SIGNING_IDENTITY"
+
+          # 1. Nettoyer les fichiers gênants (souvent créés par PyInstaller)
+          find dist/PremiereCopilot -name "*.DS_Store" -delete
+
+          # 2. Signer les frameworks et dylibs internes (Inside-Out)
+          # On signe tout ce qui est .so, .dylib, ou binaire dans _internal
+          echo "--- Signing internal libs ---"
+          find dist/PremiereCopilot/_internal -type f \( -name "*.so" -o -name "*.dylib" -o -perm +111 \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {} \;
+
+          # 3. Signer l'exécutable principal (Le fichier binaire, pas le dossier)
+          echo "--- Signing main executable ---"
+          # Attention : PyInstaller crée un dossier "PremiereCopilot" ET un binaire "PremiereCopilot" dedans
+          codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist "dist/PremiereCopilot/PremiereCopilot"
+
+          # 4. Vérification
+          echo "--- Verifying ---"
+          codesign --verify --verbose "dist/PremiereCopilot/PremiereCopilot"
+
+      # 7. Préparer les fichiers pour le ZXP
+      - name: Prepare files for ZXP
+        run: |
+          mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
+          # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
+          cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+
+      # 8. Créer et signer le ZXP (robuste, avec certificat auto-signé)
+      - name: Create and Sign ZXP
+        working-directory: ./frontend
+        run: |
+          echo "--- Making ZXPSignCmd executable ---"
+          chmod +x ./ZXPSignCmd
+
+          echo "--- Generating self-signed certificate for ZXP ---"
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" \
+            -email "admin@premierecopilot.com" \
+            -orgUnit "PremiereGPTBeta" \
+            -validityDays 3650
+
+          if [ ! -f "PremiereGPTBeta.p12" ]; then
+            echo "::error::Failed to generate self-signed certificate."
+            exit 1
+          fi
+
+          echo "--- Signing the extension folder into ZXP ---"
+          ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+
+          if [ ! -f "PremiereGPTBeta.zxp" ]; then
+            echo "::error::Failed to create ZXP."
+            exit 1
+          fi
+
+          echo "--- Verifying ZXP signature ---"
+          ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
+
+      # 9. Créer le ZIP pour le Manager App (Requis par aescripts)
+      # C'est le fichier pour le robot d'installation automatique
+      - name: Build Manager App ZIP
+        run: |
+          # 1. Créer le XML d'instruction
+          cat <<EOF > install.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+              <version>1.0.0</version>
+              <products>
+                  <product>
+                      <sku>PGPPG</sku> <files>
+                          <file>
+                              <source>PremiereGPTBeta</source>
+                              <destination>COMMON/CEP/extensions/PremiereGPTBeta</destination>
+                          </file>
+                      </files>
+                  </product>
+              </products>
+          </manifest>
+          EOF
+          
+          # 2. Créer le ZIP (Dossier extension + XML)
+          # On utilise le dossier frontend/PremiereGPTBeta qui contient déjà l'API copiée à l'étape 7
+          zip -r build/PremiereGPT_Manager_App.zip install.xml -r frontend/PremiereGPTBeta
+
+      # 10. Créer le DMG "Drag & Drop" (Premium avec create-dmg)
+      - name: Create Drag & Drop DMG
+        run: |
+          echo "--- Installing create-dmg ---"
+          brew install create-dmg
+
+          mkdir -p build/dmg_staging
+          
+          # A. Copier le dossier de l'extension
+          cp -R frontend/PremiereGPTBeta build/dmg_staging/
+          
+          # B. Définition des variables de design
+          # Chemins vers les assets graphiques (à la racine du repo)
+          DMG_BG="background_dmg.png"
+          DMG_ICON="Logo.icns"
+          
+          # Construction de la commande avec options conditionnelles
+          ARGS=()
+          ARGS+=("--volname" "Install PremiereGPT")
+          ARGS+=("--window-pos" "200" "120")
+          # La taille est en points. Pour une image 1600x1000 (Retina 2x), on utilise 800x500 points.
+          ARGS+=("--window-size" "800" "500") 
+          ARGS+=("--icon-size" "120")
+          ARGS+=("--text-size" "14")
+          
+          # Si l'image de fond existe, on l'utilise
+          if [ -f "$DMG_BG" ]; then
+            echo "Found custom background: $DMG_BG"
+            ARGS+=("--background" "$DMG_BG")
+          else
+             echo "Warning: Custom background not found at $DMG_BG"
+          fi
+
+          # Si l'icône de volume existe, on l'utilise
+          if [ -f "$DMG_ICON" ]; then
+            echo "Found custom volume icon: $DMG_ICON"
+            ARGS+=("--volicon" "$DMG_ICON")
+          fi
+
+          # Positionnement des éléments (Ajustez X Y selon votre image de fond)
+          # L'extension à gauche
+          ARGS+=("--icon" "PremiereGPTBeta" "200" "210")
+          ARGS+=("--hide-extension" "PremiereGPTBeta")
+          
+          # Le lien symbolique (Cible) à droite
+          # On crée un lien direct vers le dossier extensions Adobe
+          ARGS+=("--symlink" "Install to Adobe" "/Library/Application Support/Adobe/CEP/extensions")
+          ARGS+=("--icon" "Install to Adobe" "600" "210")
+
+          echo "--- Creating DMG ---"
+          create-dmg "${ARGS[@]}" "build/PremiereGPT_Manual.dmg" "build/dmg_staging/"
+
+      # 11. Notariser le DMG (Obligatoire pour éviter l'alerte de sécurité)
+      - name: Notarize and Staple DMG
+        run: |
+          # Création du profil temporaire
+          xcrun notarytool store-credentials "notary-profile" \
+            --apple-id "${{ secrets.APPLE_ID }}" \
+            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+
+          echo "--- Submitting DMG to Apple ---"
+          xcrun notarytool submit build/PremiereGPT_Manual.dmg \
+            --keychain-profile "notary-profile" \
+            --wait
+
+          echo "--- Stapling Ticket ---"
+          xcrun stapler staple build/PremiereGPT_Manual.dmg
+
+      # 12. Uploader les fichiers finaux
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereCopilot-Release-${{ matrix.platform }}
+          path: |
+            build/PremiereGPT_Manager_App.zip
+            build/PremiereGPT_Manual.dmg
