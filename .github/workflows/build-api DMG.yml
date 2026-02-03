@@ -206,12 +206,32 @@ jobs:
           # Chemins vers les assets graphiques (à la racine du repo)
           DMG_BG="background_dmg.png"
           DMG_ICON="Logo.icns"
+
+          # --- FIX 1: Apply Custom Icon to the Folder content ---
+          if [ -f "$DMG_ICON" ]; then
+             echo "Applying custom icon to the extension folder..."
+             # Define the special Icon\r file path (Icon + Carriage Return)
+             ICON_DEST="build/dmg_staging/PremiereGPTBeta/Icon"$'\r'
+             
+             # Copy the .icns file to the special icon location
+             cp "$DMG_ICON" "$ICON_DEST"
+             
+             # Use SetFile to hide the icon file and set the custom icon attribute on the folder
+             xcrun SetFile -a V "$ICON_DEST"
+             xcrun SetFile -a C "build/dmg_staging/PremiereGPTBeta"
+          fi
+
+          # --- FIX 2: Correct Background Image DPI for Retina ---
+          # 1600x1000 pixels @ 144 PPI = 800x500 points size
+          if [ -f "$DMG_BG" ]; then
+            echo "Adjusting background image DPI for Retina display..."
+            sips -s dpiHeight 144.0 -s dpiWidth 144.0 "$DMG_BG"
+          fi
           
           # Construction de la commande avec options conditionnelles
           ARGS=()
           ARGS+=("--volname" "Install PremiereGPT")
           ARGS+=("--window-pos" "200" "120")
-          # La taille est en points. Pour une image 1600x1000 (Retina 2x), on utilise 800x500 points.
           ARGS+=("--window-size" "800" "500") 
           ARGS+=("--icon-size" "120")
           ARGS+=("--text-size" "14")
