@@ -166,106 +166,39 @@ jobs:
           ./ZXPSignCmd -verify "./PremiereGPTaescript.zxp" -certinfo
 
 
-      # 9. Créer le ZIP pour le Manager App (Requis par aescripts)
-      # C'est le fichier pour le robot d'installation automatique
-      - name: Build Manager App ZIP
+      # 9. Construire et signer l'installeur PKG
+      - name: Build and Sign PKG Installer
         run: |
-          # 1. Créer le XML d'instruction
-          cat <<EOF > install.xml
-          <?xml version="1.0" encoding="UTF-8"?>
-          <manifest>
-              <version>1.0.0</version>
-              <products>
-                  <product>
-                      <sku>PGPPG</sku> <files>
-                          <file>
-                              <source>PremiereGPTaescript</source>
-                              <destination>COMMON/CEP/extensions/PremiereGPTaescript</destination>
-                          </file>
-                      </files>
-                  </product>
-              </products>
-          </manifest>
-          EOF
+          mkdir -p build/pkg_root/PremiereGPTaescript
+          unzip frontend/PremiereGPTaescript.zxp -d build/pkg_root/PremiereGPTaescript
+          mkdir -p build/scripts
+          chmod +x preinstall.sh postinstall.sh
+          cp preinstall.sh build/scripts/preinstall
+          cp postinstall.sh build/scripts/postinstall
           
-          # 2. Créer le ZIP (Dossier extension + XML)
-          # On utilise le dossier frontend/PremiereGPTaescript qui contient déjà l'API copiée à l'étape 7
-          zip -r build/PremiereGPT_Manager_App.zip install.xml -r frontend/PremiereGPTaescript
+          echo "--- Available identities in build.keychain ---"
+          security find-identity -v build.keychain
+          echo "---------------------------------------------"
 
-      # 10. Créer le DMG "Drag & Drop" (Premium avec create-dmg)
-      - name: Create Drag & Drop DMG
-        run: |
-          echo "--- Installing create-dmg ---"
-          brew install create-dmg
-
-          mkdir -p build/dmg_staging
+          # Correction : On cherche dans toutes les identités (-v)
+          SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           
-          # A. Copier le dossier de l'extension
-          cp -R frontend/PremiereGPTaescript build/dmg_staging/
-          
-          # B. Définition des variables de design
-          # Chemins vers les assets graphiques (à la racine du repo)
-          DMG_BG="background_dmg.png"
-          DMG_ICON="Logo.icns"
-
-          # --- FIX 1: Apply Custom Icon to the Folder content ---
-          if [ -f "$DMG_ICON" ]; then
-             echo "Applying custom icon to the extension folder..."
-             # Define the special Icon\r file path (Icon + Carriage Return)
-             ICON_DEST="build/dmg_staging/PremiereGPTaescript/Icon"$'\r'
-             
-             # Copy the .icns file to the special icon location
-             cp "$DMG_ICON" "$ICON_DEST"
-             
-             # Use SetFile to hide the icon file and set the custom icon attribute on the folder
-             xcrun SetFile -a V "$ICON_DEST"
-             xcrun SetFile -a C "build/dmg_staging/PremiereGPTaescript"
+          if [ -z "$SIGNING_IDENTITY" ]; then
+            echo "::error::Developer ID Installer identity not found."
+            exit 1
           fi
 
-          # --- FIX 2: Correct Background Image DPI for Retina ---
-          # 1600x1000 pixels @ 144 PPI = 800x500 points size
-          if [ -f "$DMG_BG" ]; then
-            echo "Adjusting background image DPI for Retina display..."
-            sips -s dpiHeight 144.0 -s dpiWidth 144.0 "$DMG_BG"
-          fi
-          
-          # Construction de la commande avec options conditionnelles
-          ARGS=()
-          ARGS+=("--volname" "Install PremiereGPT")
-          ARGS+=("--window-pos" "200" "120")
-          ARGS+=("--window-size" "800" "500") 
-          ARGS+=("--icon-size" "120")
-          ARGS+=("--text-size" "14")
-          
-          # Si l'image de fond existe, on l'utilise
-          if [ -f "$DMG_BG" ]; then
-            echo "Found custom background: $DMG_BG"
-            ARGS+=("--background" "$DMG_BG")
-          else
-             echo "Warning: Custom background not found at $DMG_BG"
-          fi
-
-          # Si l'icône de volume existe, on l'utilise
-          if [ -f "$DMG_ICON" ]; then
-            echo "Found custom volume icon: $DMG_ICON"
-            ARGS+=("--volicon" "$DMG_ICON")
-          fi
-
-          # Positionnement des éléments (Ajustez X Y selon votre image de fond)
-          # L'extension à gauche
-          ARGS+=("--icon" "PremiereGPTaescript" "200" "210")
-          ARGS+=("--hide-extension" "PremiereGPTaescript")
-          
-          # Le lien symbolique (Cible) à droite
-          # On crée le lien manuellement dans le dossier source car l'option --symlink n'est pas supportée par cette version
-          ln -s "/Library/Application Support/Adobe/CEP/extensions" "build/dmg_staging/Install to Adobe"
-          ARGS+=("--icon" "Install to Adobe" "600" "210")
-
-          echo "--- Creating DMG ---"
-          create-dmg "${ARGS[@]}" "build/PremiereGPT_Manual.dmg" "build/dmg_staging/"
-
-      # 11. Notariser le DMG (Obligatoire pour éviter l'alerte de sécurité)
-      - name: Notarize and Staple DMG
+          echo "Using Installer signing identity: $SIGNING_IDENTITY"
+          pkgbuild --root build/pkg_root \
+                   --install-location "/Library/Application Support/Adobe/CEP/extensions" \
+                   --scripts build/scripts \
+                   --identifier com.trial17.premierecopilot \
+                   --version 1.0 \
+                   --sign "$SIGNING_IDENTITY" \
+                   build/PremiereCopilot-Installer.pkg
+      
+      # 10. Notariser et agrafer l'installeur PKG (Native notarytool)
+      - name: Notarize and Staple PKG
         run: |
           # Création du profil temporaire pour notarytool
           xcrun notarytool store-credentials "notary-profile" \
@@ -273,19 +206,22 @@ jobs:
             --team-id "${{ secrets.APPLE_TEAM_ID }}" \
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
 
-          echo "--- Submitting DMG to Apple ---"
-          xcrun notarytool submit build/PremiereGPT_Manual.dmg \
+          echo "--- Submitting to Apple Notary Service ---"
+          xcrun notarytool submit build/PremiereCopilot-Installer.pkg \
             --keychain-profile "notary-profile" \
             --wait
 
           echo "--- Stapling Ticket ---"
-          xcrun stapler staple build/PremiereGPT_Manual.dmg
+          xcrun stapler staple build/PremiereCopilot-Installer.pkg
 
-      # 12. Uploader les fichiers finaux
+      # 11. Créer le ZIP final avec l'installeur et le Quickstart.pdf
+      - name: Create Release ZIP
+        run: |
+          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}-aescript.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf
+
+      # 12. Uploader l'artefact final (ZIP)
       - name: Upload Installer ZIP
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}-aescript
-          path: |
-            build/PremiereGPT_Manager_App.zip
-            build/PremiereGPT_Manual.dmg
+          path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescript.zip
