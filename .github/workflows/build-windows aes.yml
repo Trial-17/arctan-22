@@ -80,7 +80,7 @@ jobs:
       # 9. Créer le ZIP final avec l'installeur EXE et le Quickstart.pdf
       - name: Create Release ZIP
         run: |
-          Compress-Archive -Path "Output/PremiereCopilot-Setup.exe", "Quickstart.pdf" -DestinationPath "Output/PremiereCopilot-Installer-Windows-aescript.zip"
+          Compress-Archive -Path "Output/PremiereCopilot-Setup-aescript.exe", "Quickstart.pdf" -DestinationPath "Output/PremiereCopilot-Installer-Windows-aescript.zip"
         shell: pwsh
 
       # 10. Uploader l'installeur ZIP final
