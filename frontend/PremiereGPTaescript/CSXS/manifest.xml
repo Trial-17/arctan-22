@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest
 	Version="5.0"
-	ExtensionBundleId="com.premiere.GPTaescript"
+	ExtensionBundleId="com.premiere.GPTaescripts"
 	ExtensionBundleVersion="1.0.0"
-	ExtensionBundleName="Premiere GPTaescript"
+	ExtensionBundleName="Premiere GPTaescripts"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
 	<ExtensionList>
-		<Extension Id="com.premiere.GPTaescript.panel" Version="1.0" />
+		<Extension Id="com.premiere.GPTaescripts.panel" Version="1.0" />
 	</ExtensionList>
 
 	<ExecutionEnvironment>
@@ -25,7 +25,7 @@
 </ExecutionEnvironment>
 
 	<DispatchInfoList>
-		<Extension Id="com.premiere.GPTaescript.panel">
+		<Extension Id="com.premiere.GPTaescripts.panel">
 			<DispatchInfo>
 
 			<Resources>
@@ -47,12 +47,12 @@
 			<UI>
 
 				<Type>Panel</Type>
-				<Menu>Premiere GPTaescript</Menu>
+				<Menu>Premiere GPTaescripts Podcast Bundle</Menu>
 
 				<Geometry>
 					<Size>
-						<Height>600</Height>
-						<Width>600</Width>
+						<Height>800</Height>
+						<Width>800</Width>
 					</Size>
 				
 					

@@ -132,9 +132,9 @@ jobs:
       # 7. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
         run: |
-          mkdir -p frontend/PremiereGPTaescript/js/libs/PremiereCopilotAPI
+          mkdir -p frontend/PremiereGPTaescripts/js/libs/PremiereCopilotAPI
           # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
-          cp -R dist/PremiereCopilot/. frontend/PremiereGPTaescript/js/libs/PremiereCopilotAPI/
+          cp -R dist/PremiereCopilot/. frontend/PremiereGPTaescripts/js/libs/PremiereCopilotAPI/
 
       # 8. Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
@@ -144,9 +144,9 @@ jobs:
           chmod +x ./ZXPSignCmd
 
           echo "--- Generating self-signed certificate for ZXP ---"
-          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescript" "plugin2025" "PremiereGPTBeta.p12" \
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescripts" "plugin2025" "PremiereGPTBeta.p12" \
             -email "admin@premierecopilot.com" \
-            -orgUnit "PremiereGPTaescript" \
+            -orgUnit "PremiereGPTaescripts" \
             -validityDays 3650
 
           if [ ! -f "PremiereGPTBeta.p12" ]; then
@@ -155,22 +155,22 @@ jobs:
           fi
 
           echo "--- Signing the extension folder into ZXP ---"
-          ./ZXPSignCmd -sign "./PremiereGPTaescript" "./PremiereGPTaescript.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+          ./ZXPSignCmd -sign "./PremiereGPTaescripts" "./PremiereGPTaescripts.zxp" "./PremiereGPTBeta.p12" "plugin2025"
 
-          if [ ! -f "PremiereGPTaescript.zxp" ]; then
+          if [ ! -f "PremiereGPTaescripts.zxp" ]; then
             echo "::error::Failed to create ZXP."
             exit 1
           fi
 
           echo "--- Verifying ZXP signature ---"
-          ./ZXPSignCmd -verify "./PremiereGPTaescript.zxp" -certinfo
+          ./ZXPSignCmd -verify "./PremiereGPTaescripts.zxp" -certinfo
 
 
       # 9. Construire et signer l'installeur PKG
       - name: Build and Sign PKG Installer
         run: |
-          mkdir -p build/pkg_root/PremiereGPTaescript
-          unzip frontend/PremiereGPTaescript.zxp -d build/pkg_root/PremiereGPTaescript
+          mkdir -p build/pkg_root/PremiereGPTaescripts
+          unzip frontend/PremiereGPTaescripts.zxp -d build/pkg_root/PremiereGPTaescripts
           mkdir -p build/scripts
           chmod +x preinstall_aes.sh postinstall_aes.sh
           cp preinstall_aes.sh build/scripts/preinstall
@@ -217,11 +217,11 @@ jobs:
       # 11. Créer le ZIP final avec l'installeur et le Quickstart.pdf
       - name: Create Release ZIP
         run: |
-          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}-aescript.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf
+          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf
 
       # 12. Uploader l'artefact final (ZIP)
       - name: Upload Installer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereCopilot-Installer-${{ matrix.platform }}-aescript
-          path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescript.zip
+          name: PremiereCopilot-Installer-${{ matrix.platform }}-aescripts
+          path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescriptss.zip

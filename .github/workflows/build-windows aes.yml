@@ -43,31 +43,31 @@ jobs:
       # 5. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
         run: |
-          New-Item -ItemType Directory -Force -Path "frontend\PremiereGPTaescript\js\libs\PremiereCopilotAPI"
-          Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTaescript\js\libs\PremiereCopilotAPI" -Recurse
+          New-Item -ItemType Directory -Force -Path "frontend\PremiereGPTaescripts\js\libs\PremiereCopilotAPI"
+          Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTaescripts\js\libs\PremiereCopilotAPI" -Recurse
         shell: pwsh
 
       # 6. Créer et signer le ZXP
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
-          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescript" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTaescript" -validityDays 3650
-          .\ZXPSignCmd.exe -sign ".\PremiereGPTaescript" ".\PremiereGPTaescript.zxp" ".\PremiereGPTBeta.p12" "plugin2025" -tsa http://timestamp.digicert.com/
-          .\ZXPSignCmd.exe -verify ".\PremiereGPTaescript.zxp" -certinfo
+          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescripts" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTaescripts" -validityDays 3650
+          .\ZXPSignCmd.exe -sign ".\PremiereGPTaescripts" ".\PremiereGPTaescripts.zxp" ".\PremiereGPTBeta.p12" "plugin2025" -tsa http://timestamp.digicert.com/
+          .\ZXPSignCmd.exe -verify ".\PremiereGPTaescripts.zxp" -certinfo
         shell: pwsh
 
       # 6.1. Uploader l'artefact ZXP
       - name: Upload ZXP Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereGPTaescript-ZXP-Windows
-          path: frontend/PremiereGPTaescript.zxp
+          name: PremiereGPTaescripts-ZXP-Windows
+          path: frontend/PremiereGPTaescripts.zxp
 
       # 7. Préparer les fichiers pour l'installeur Inno Setup
       - name: Prepare files for Inno Setup
         run: |
           New-Item -ItemType Directory -Force -Path "build/pkg_payload"
-          Expand-Archive -Path "frontend/PremiereGPTaescript.zxp" -DestinationPath "build/pkg_payload"
+          Expand-Archive -Path "frontend/PremiereGPTaescripts.zxp" -DestinationPath "build/pkg_payload"
         shell: pwsh
         
       # 8. Construire l'installeur EXE avec Inno Setup
@@ -80,12 +80,12 @@ jobs:
       # 9. Créer le ZIP final avec l'installeur EXE et le Quickstart.pdf
       - name: Create Release ZIP
         run: |
-          Compress-Archive -Path "Output/PremiereCopilot-Setup-aescript.exe", "Quickstart.pdf" -DestinationPath "Output/PremiereCopilot-Installer-Windows-aescript.zip"
+          Compress-Archive -Path "Output/PremiereCopilot-Setup-aescripts.exe", "Quickstart.pdf" -DestinationPath "Output/PremiereCopilot-Installer-Windows-aescripts.zip"
         shell: pwsh
 
       # 10. Uploader l'installeur ZIP final
       - name: Upload EXE Installer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereCopilot-Installer-Windows-aescript
-          path: Output/PremiereCopilot-Installer-Windows-aescript.zip
+          name: PremiereCopilot-Installer-Windows-aescripts
+          path: Output/PremiereCopilot-Installer-Windows-aescripts.zip

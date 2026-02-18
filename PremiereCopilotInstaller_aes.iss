@@ -22,7 +22,7 @@ begin
     
     OldDir1 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTBeta');
     OldDir2 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereCopilot');
-    OldDir3 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTaescript');
+    OldDir3 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTaescripts');
 
     if DirExists(OldDir1) then
       DelTree(OldDir1, True, True, True);
@@ -35,13 +35,13 @@ end;
 
 
 [Setup]
-AppName=PremiereGPTaescript
+AppName=PremiereGPTaescripts
 AppVersion=1.0
-DefaultDirName={commoncf}\Adobe\CEP\extensions\PremiereGPTaescript
+DefaultDirName={commoncf}\Adobe\CEP\extensions\PremiereGPTaescripts
 DisableProgramGroupPage=yes
 Uninstallable=no
 OutputDir=Output
-OutputBaseFilename=PremiereCopilot-Setup-aescript
+OutputBaseFilename=PremiereCopilot-Setup-aescripts
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64

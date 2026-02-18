@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "📁 Création de la structure API Premiere Copilot (Version AESCRIPT)..."
+echo "📁 Création de la structure API Premiere Copilot (Version aescripts)..."
 
 BASE_PATH="$HOME/Documents/Adobe/Premiere Pro/Premiere Copilot"
 mkdir -p "$BASE_PATH"
@@ -24,8 +24,8 @@ do
 done
 
 # --- Rendre l'API exécutable ---
-# CHEMIN CIBLE POUR LA VERSION AESCRIPT : PremiereGPTaescript
-API_EXECUTABLE='/Library/Application Support/Adobe/CEP/extensions/PremiereGPTaescript/js/libs/PremiereCopilotAPI/PremiereCopilot'
+# CHEMIN CIBLE POUR LA VERSION aescripts : PremiereGPTaescripts
+API_EXECUTABLE='/Library/Application Support/Adobe/CEP/extensions/PremiereGPTaescripts/js/libs/PremiereCopilotAPI/PremiereCopilot'
 
 echo "⚙️  Vérification de l'exécutable de l'API..."
 if [ -f "$API_EXECUTABLE" ]; then
