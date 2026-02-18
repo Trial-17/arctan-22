@@ -172,9 +172,9 @@ jobs:
           mkdir -p build/pkg_root/PremiereGPTaescript
           unzip frontend/PremiereGPTaescript.zxp -d build/pkg_root/PremiereGPTaescript
           mkdir -p build/scripts
-          chmod +x preinstall.sh postinstall.sh
-          cp preinstall.sh build/scripts/preinstall
-          cp postinstall.sh build/scripts/postinstall
+          chmod +x preinstall_aes.sh postinstall_aes.sh
+          cp preinstall_aes.sh build/scripts/preinstall
+          cp postinstall_aes.sh build/scripts/postinstall
           
           echo "--- Available identities in build.keychain ---"
           security find-identity -v build.keychain

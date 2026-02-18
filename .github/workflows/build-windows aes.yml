@@ -75,7 +75,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           # Assurez-vous que ce chemin vers votre script Inno Setup est correct
-          path: PremiereCopilotInstaller.iss
+          path: PremiereCopilotInstaller_aes.iss
 
       # 9. Créer le ZIP final avec l'installeur EXE et le Quickstart.pdf
       - name: Create Release ZIP
