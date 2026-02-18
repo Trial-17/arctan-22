@@ -33,13 +33,21 @@ begin
   end;
 end;
 
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    KillProcessOnPort8000();
+  end;
+end;
+
 
 [Setup]
 AppName=PremiereGPTaescripts
 AppVersion=1.0
 DefaultDirName={commoncf}\Adobe\CEP\extensions\PremiereGPTaescripts
 DisableProgramGroupPage=yes
-Uninstallable=no
+Uninstallable=yes
 OutputDir=Output
 OutputBaseFilename=PremiereCopilot-Setup-aescripts
 Compression=lzma

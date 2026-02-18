@@ -217,11 +217,11 @@ jobs:
       # 11. Créer le ZIP final avec l'installeur et le Quickstart.pdf
       - name: Create Release ZIP
         run: |
-          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf
+          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf uninstall_aes.command
 
       # 12. Uploader l'artefact final (ZIP)
       - name: Upload Installer ZIP
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}-aescripts
-          path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescriptss.zip
+          path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
