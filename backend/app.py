@@ -58,7 +58,7 @@ from langchain_core.messages.ai import UsageMetadata
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.tools import StructuredTool
 
-
+from playwright.async_api import async_playwright
 
 from PIL import Image, ImageFont, ImageDraw
 
