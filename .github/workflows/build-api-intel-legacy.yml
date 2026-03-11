@@ -89,9 +89,9 @@ jobs:
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
-              # Preserve the original filename from the URL
               WHEEL_FILE=$(basename "$line")
               curl -L -o "tmp_wheels/${WHEEL_FILE}" "$line"
+              # --no-deps to avoid platform mismatch on deps, install deps separately after
               arch -x86_64 python -m pip install "tmp_wheels/${WHEEL_FILE}" \
                 --force-reinstall \
                 --no-deps \
@@ -102,6 +102,10 @@ jobs:
               arch -x86_64 python -m pip install "$line"
             fi
           done < backend/requirements_old_version.txt
+
+          # Install PyInstaller's missing dependencies explicitly
+          # (skipped by --no-deps above since pyinstaller was a URL wheel)
+          arch -x86_64 python -m pip install macholib altgraph pyinstaller-hooks-contrib
         shell: bash
 
 
