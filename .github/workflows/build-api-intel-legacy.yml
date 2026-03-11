@@ -19,6 +19,8 @@ jobs:
 
     # Utilise la machine virtuelle définie dans la matrice
     runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
 
     steps:
       # 1. Récupère le code de votre dépôt
@@ -108,14 +110,36 @@ jobs:
           echo "--- Verifying ---"
           codesign --verify --verbose "dist/PremiereCopilot/PremiereCopilot"
 
-      # 7. Préparer les fichiers pour le ZXP
+      # 7. Vérification Statique (macOS Deployment Target)
+      - name: Static Verification - Check Minimum OS Version
+        run: |
+          echo "--- Checking load commands for LC_BUILD_VERSION or LC_VERSION_MIN_MACOSX ---"
+          otool -l dist/PremiereCopilot/PremiereCopilot | grep -A 3 "LC_BUILD_VERSION\|LC_VERSION_MIN_MACOSX"
+          
+          # Vérification que le minos est bien 11.0 (ou inférieur)
+          MIN_OS=$(otool -l dist/PremiereCopilot/PremiereCopilot | grep -A 3 "LC_BUILD_VERSION" | grep "minos" | awk '{print $2}')
+          echo "Detected Min OS: $MIN_OS"
+          if [[ "$MIN_OS" != "11.0" && "$MIN_OS" != "10.13" ]]; then
+             echo "::warning::Min OS version detected ($MIN_OS) is different from target (11.0)."
+          fi
+
+      # 8. Smoke Test - Lancer l'API et vérifier qu'elle répond
+      - name: Run Smoke Test
+        run: |
+          source venv/bin/activate
+          # On s'assure que 'requests' est bien là pour le test
+          pip install requests
+          python tests/smoke_test.py
+        shell: bash
+
+      # 9. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
         run: |
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
           # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
           cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 
-      # 8. Créer et signer le ZXP (robuste, avec certificat auto-signé)
+      # 10. Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
@@ -145,7 +169,7 @@ jobs:
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
 
-      # 9. Construire et signer l'installeur PKG
+      # 11. Construire et signer l'installeur PKG
       - name: Build and Sign PKG Installer
         run: |
           mkdir -p build/pkg_root/PremiereGPTBeta
@@ -176,7 +200,7 @@ jobs:
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
       
-      # 10. Notariser et agrafer l'installeur PKG (Native notarytool)
+      # 12. Notariser et agrafer l'installeur PKG (Native notarytool)
       - name: Notarize and Staple PKG
         run: |
           # Création du profil temporaire pour notarytool
@@ -193,7 +217,7 @@ jobs:
           echo "--- Stapling Ticket ---"
           xcrun stapler staple build/PremiereCopilot-Installer.pkg
 
-      # 11. Uploader l'artefact final
+      # 13. Uploader l'artefact final
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:

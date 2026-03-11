@@ -4,7 +4,7 @@ name: Build Windows Installer
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
   push:
-    branches: [ main ]
+    # branches: [ main ]
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
 

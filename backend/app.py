@@ -7,9 +7,14 @@ import runpy
 from cryptography.fernet import Fernet
 
 import os
-import matplotlib
-import matplotlib.pyplot as plt
-matplotlib.use('Agg')
+
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    matplotlib.use('Agg')
+except Exception as e:
+    print(f"Warning: Failed to load matplotlib: {e}")
+    matplotlib = None
 
 
 from pathlib import Path
@@ -41,7 +46,11 @@ from langchain_core.messages import BaseMessage, ToolMessage, AIMessage, SystemM
 from langchain.tools import tool
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
-import av
+try:
+    import av
+except Exception as e:
+    print(f"Warning: Failed to load av (PyAV): {e}")
+    av = None
 import platform
 
 
@@ -58,7 +67,11 @@ from langchain_core.messages.ai import UsageMetadata
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.tools import StructuredTool
 
-from playwright.async_api import async_playwright
+try:
+    from playwright.async_api import async_playwright
+except Exception as e:
+    print(f"Warning: Failed to load playwright: {e}")
+    async_playwright = None
 
 from PIL import Image, ImageFont, ImageDraw
 
