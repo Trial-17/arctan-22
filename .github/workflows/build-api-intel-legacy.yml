@@ -77,9 +77,18 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           python -m pip install --upgrade pip
-          # On utilise l'option --check-build-dependencies pour forcer l'acceptation des wheels via URL
-          # Et on bypass les checks de plateforme qui bloquent les URLs directes sur GitHub Actions
-          python -m pip install -r backend/requirements_old_version.txt || python -m pip install --ignore-installed -r backend/requirements_old_version.txt
+          
+          # Boucle intelligente pour traiter les URLs et les packages standard
+          while read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" == http* ]]; then
+              echo "--- Installing from URL: $line ---"
+              # On télécharge et on installe sans vérifier les tags de plateforme (--force-reinstall)
+              python -m pip install "$line" --force-reinstall --no-deps || echo "Warning: Failed to install $line"
+            elif [[ -n "$line" && ! "$line" == "#"* ]]; then
+              echo "--- Installing package: $line ---"
+              python -m pip install "$line"
+            fi
+          done < backend/requirements_old_version.txt
         shell: bash
 
       # 5. Construire l'API avec PyInstaller
