@@ -91,11 +91,8 @@ jobs:
               echo "--- Installing from URL: $line ---"
               WHEEL_FILE=$(basename "$line")
               curl -L -o "tmp_wheels/${WHEEL_FILE}" "$line"
-              # --no-deps to avoid platform mismatch on deps, install deps separately after
               arch -x86_64 python -m pip install "tmp_wheels/${WHEEL_FILE}" \
-                --force-reinstall \
-                --no-deps \
-                --ignore-requires-python
+                --force-reinstall
               rm -f "tmp_wheels/${WHEEL_FILE}"
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
@@ -108,6 +105,8 @@ jobs:
           arch -x86_64 python -m pip install macholib altgraph pyinstaller-hooks-contrib
         shell: bash
 
+
+        
 
       # 5. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
