@@ -90,7 +90,8 @@ jobs:
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
-              python -m pip install "$line" --force-reinstall || exit 1
+              # On force la plateforme pour que pip accepte le wheel Intel sur un runner ARM
+              python -m pip install "$line" --force-reinstall --platform macosx_10_13_x86_64 --only-binary=:all: || exit 1
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
               python -m pip install "$line"
