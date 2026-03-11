@@ -82,8 +82,9 @@ jobs:
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
-              # On télécharge et on installe sans vérifier les tags de plateforme (--force-reinstall)
-              python -m pip install "$line" --force-reinstall --no-deps || echo "Warning: Failed to install $line"
+              # On installe le .whl en forçant la réinstallation. On NE MET PAS --no-deps
+              # pour que pip télécharge également les dépendances (comme macholib pour pyinstaller).
+              python -m pip install "$line" --force-reinstall || echo "Warning: Failed to install $line"
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
               python -m pip install "$line"
