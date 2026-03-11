@@ -80,24 +80,23 @@ jobs:
       # 4. Crée l'environnement virtuel Intel et installe les dépendances
       - name: Install Python dependencies
         run: |
-          # Create venv with Intel Python specifically
           arch -x86_64 /usr/local/bin/python3 -m venv venv
           source venv/bin/activate
-          
           arch -x86_64 python -m pip install --upgrade pip
+
+          mkdir -p tmp_wheels
 
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
+              # Preserve the original filename from the URL
               WHEEL_FILE=$(basename "$line")
-              curl -L -o "./tmp_wheel_${WHEEL_FILE}" "$line"
-              # Use SETUPTOOLS_USE_DISTUTILS to bypass platform check
-              # We install with --ignore-requires-python and explicit path
-              arch -x86_64 python -m pip install "./tmp_wheel_${WHEEL_FILE}" \
+              curl -L -o "tmp_wheels/${WHEEL_FILE}" "$line"
+              arch -x86_64 python -m pip install "tmp_wheels/${WHEEL_FILE}" \
                 --force-reinstall \
                 --no-deps \
                 --ignore-requires-python
-              rm -f "./tmp_wheel_${WHEEL_FILE}"
+              rm -f "tmp_wheels/${WHEEL_FILE}"
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
               arch -x86_64 python -m pip install "$line"
@@ -105,7 +104,7 @@ jobs:
           done < backend/requirements_old_version.txt
         shell: bash
 
-        
+
       # 5. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
