@@ -90,8 +90,11 @@ jobs:
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
-              # On force la plateforme pour que pip accepte le wheel Intel sur un runner ARM
-              python -m pip install "$line" --force-reinstall --platform macosx_10_13_x86_64 --only-binary=:all: || exit 1
+              # Pip refuse --platform à l'intérieur d'un venv pour une installation directe.
+              # Solution : On télécharge d'abord le wheel avec la plateforme forcée, puis on l'installe localement.
+              python -m pip download "$line" --platform macosx_10_13_x86_64 --no-deps --dest ./tmp_wheels
+              python -m pip install ./tmp_wheels/*.whl --force-reinstall
+              rm -rf ./tmp_wheels/*
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
               python -m pip install "$line"
