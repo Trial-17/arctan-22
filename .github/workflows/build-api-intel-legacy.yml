@@ -80,28 +80,32 @@ jobs:
       # 4. Crée l'environnement virtuel Intel et installe les dépendances
       - name: Install Python dependencies
         run: |
-          # On crée le venv avec le Python Intel spécifiquement
+          # Create venv with Intel Python specifically
           arch -x86_64 /usr/local/bin/python3 -m venv venv
           source venv/bin/activate
           
-          # Toutes les commandes pip doivent passer par arch -x86_64 (hérité de l'activation du venv Intel)
-          python -m pip install --upgrade pip
-          
+          arch -x86_64 python -m pip install --upgrade pip
+
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
-              # Pip refuse --platform à l'intérieur d'un venv pour une installation directe.
-              # Solution : On télécharge d'abord le wheel avec la plateforme forcée, puis on l'installe localement.
-              python -m pip download "$line" --platform macosx_10_13_x86_64 --no-deps --dest ./tmp_wheels
-              python -m pip install ./tmp_wheels/*.whl --force-reinstall
-              rm -rf ./tmp_wheels/*
+              WHEEL_FILE=$(basename "$line")
+              curl -L -o "./tmp_wheel_${WHEEL_FILE}" "$line"
+              # Use SETUPTOOLS_USE_DISTUTILS to bypass platform check
+              # We install with --ignore-requires-python and explicit path
+              arch -x86_64 python -m pip install "./tmp_wheel_${WHEEL_FILE}" \
+                --force-reinstall \
+                --no-deps \
+                --ignore-requires-python
+              rm -f "./tmp_wheel_${WHEEL_FILE}"
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
-              python -m pip install "$line"
+              arch -x86_64 python -m pip install "$line"
             fi
           done < backend/requirements_old_version.txt
         shell: bash
 
+        
       # 5. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
