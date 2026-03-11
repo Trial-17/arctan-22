@@ -28,6 +28,11 @@ def smoke_test():
     
     print("⏳ Attente du démarrage de l'API...")
     for i in range(max_retries):
+        # Vérification immédiate : le processus a-t-il crashé ?
+        if process.poll() is not None:
+            print("❌ Le processus de l'API s'est arrêté prématurément !")
+            break
+            
         time.sleep(1)
         try:
             # On teste l'URL racine de ton FastAPI

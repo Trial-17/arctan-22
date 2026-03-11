@@ -14,8 +14,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-15
+          - os: macos-14
             platform: Mac-Intel
+            architecture: x64
 
     # Utilise la machine virtuelle définie dans la matrice
     runs-on: ${{ matrix.os }}
@@ -65,26 +66,31 @@ jobs:
           
           echo "✅ Both Application and Installer certificates found in the keychain."
 
-      # 3. Configure l'environnement Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      # 3. Configure l'environnement Python Intel (via Rosetta 2 pour les runners ARM de 2026)
+      - name: Install Intel Python 3.12
+        run: |
+          # Téléchargement du pkg officiel (Universal/Intel) compatible macOS 11+
+          curl -L -O https://www.python.org/ftp/python/3.12.3/python-3.12.3-macos11.pkg
+          sudo installer -pkg python-3.12.3-macos11.pkg -target /
+          
+          # Vérification que c'est bien la version x86_64 qui répondra à 'arch -x86_64'
+          arch -x86_64 /usr/local/bin/python3 --version
+          arch -x86_64 /usr/local/bin/python3 -c "import platform; print(platform.machine())"
 
-      # 4. Crée l'environnement virtuel et installe les dépendances
+      # 4. Crée l'environnement virtuel Intel et installe les dépendances
       - name: Install Python dependencies
         run: |
-          python -m venv venv
+          # On crée le venv avec le Python Intel spécifiquement
+          arch -x86_64 /usr/local/bin/python3 -m venv venv
           source venv/bin/activate
+          
+          # Toutes les commandes pip doivent passer par arch -x86_64 (hérité de l'activation du venv Intel)
           python -m pip install --upgrade pip
           
-          # Boucle intelligente pour traiter les URLs et les packages standard
           while read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == http* ]]; then
               echo "--- Installing from URL: $line ---"
-              # On installe le .whl en forçant la réinstallation. On NE MET PAS --no-deps
-              # pour que pip télécharge également les dépendances (comme macholib pour pyinstaller).
-              python -m pip install "$line" --force-reinstall || echo "Warning: Failed to install $line"
+              python -m pip install "$line" --force-reinstall || exit 1
             elif [[ -n "$line" && ! "$line" == "#"* ]]; then
               echo "--- Installing package: $line ---"
               python -m pip install "$line"
@@ -96,7 +102,8 @@ jobs:
       - name: Build API with PyInstaller
         run: |
           source venv/bin/activate
-          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/app.py
+          # Force l'exécution en x86_64 pour que PyInstaller génère un binaire Intel
+          arch -x86_64 python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/app.py
         shell: bash
 
       # 6. Signer correctement tout le bundle PyInstaller (Méthode Manuelle Stricte)
@@ -139,9 +146,10 @@ jobs:
       - name: Run Smoke Test
         run: |
           source venv/bin/activate
-          # On s'assure que 'requests' est bien là pour le test
+          # On s'assure que 'requests' est bien là
           pip install requests
-          python tests/smoke_test.py
+          # On peut lancer le test Intel sur l'ARM de GitHub grâce à Rosetta 2
+          arch -x86_64 python tests/smoke_test.py
         shell: bash
 
       # 9. Préparer les fichiers pour le ZXP
