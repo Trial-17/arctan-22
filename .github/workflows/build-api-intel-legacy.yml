@@ -121,6 +121,9 @@ jobs:
       # 6. Signer correctement tout le bundle PyInstaller (Méthode Manuelle Stricte)
       - name: Sign PyInstaller Bundle (Correct Method)
         run: |
+          # DÉVERROUILLAGE VITAL DU KEYCHAIN POUR ÉVITER LE FREEZE
+          security unlock-keychain -p temp build.keychain
+
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
           echo "Using Identity: $SIGNING_IDENTITY"
 
@@ -141,6 +144,8 @@ jobs:
           echo "--- Verifying ---"
           codesign --verify --verbose "dist/PremiereCopilot/PremiereCopilot"
 
+
+          
       # 7. Vérification Statique (macOS Deployment Target)
       - name: Static Verification - Check Minimum OS Version
         run: |
