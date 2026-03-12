@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest
 	Version="5.0"
-	ExtensionBundleId="com.premiere.GPTBeta"
+	ExtensionBundleId="com.premiere.GPT"
 	ExtensionBundleVersion="1.0.0"
 	ExtensionBundleName="Premiere GPT"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
 	<ExtensionList>
-		<Extension Id="com.premiere.GPTBeta.panel" Version="1.0" />
+		<Extension Id="com.premiere.GPT.panel" Version="1.0" />
 	</ExtensionList>
 
 	<ExecutionEnvironment>
@@ -25,7 +25,7 @@
 </ExecutionEnvironment>
 
 	<DispatchInfoList>
-		<Extension Id="com.premiere.GPTBeta.panel">
+		<Extension Id="com.premiere.GPT.panel">
 			<DispatchInfo>
 
 			<Resources>
@@ -47,7 +47,7 @@
 			<UI>
 
 				<Type>Panel</Type>
-				<Menu>Premiere GPTBeta</Menu>
+				<Menu>Premiere GPT</Menu>
 
 				<Geometry>
 					<Size>
