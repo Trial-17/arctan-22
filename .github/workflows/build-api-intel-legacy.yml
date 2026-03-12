@@ -77,12 +77,15 @@ jobs:
           arch -x86_64 /usr/local/bin/python3 --version
           arch -x86_64 /usr/local/bin/python3 -c "import platform; print(platform.machine())"
 
-          
+
+
+
       # 4. Crée l'environnement virtuel Intel et installe les dépendances
       - name: Install Python dependencies
         run: |
-          # 1. Toujours forcer la variable d'environnement dans le shell courant
+          # 1. Variables de rétrocompatibilité STRICTES
           export MACOSX_DEPLOYMENT_TARGET=11.0
+          export SYSTEM_VERSION_COMPAT=1
           
           arch -x86_64 /usr/local/bin/python3 -m venv venv
           source venv/bin/activate
@@ -90,31 +93,24 @@ jobs:
           # 2. Mise à jour des outils de build
           arch -x86_64 python -m pip install --upgrade pip setuptools wheel
           
-          echo "=== 1. SYSTÈME HÔTE (Runner GitHub) ==="
-          sw_vers
-          uname -m
-          
-          echo "=== 2. CE QUE PYTHON VOIT ==="
+          echo "=== 1. CE QUE PYTHON ET PIP VOIENT MAINTENANT ==="
           arch -x86_64 python -c "
           import platform, sys, os
-          print(f'Python Version : {sys.version.split()[0]}')
+          from packaging import tags
           print(f'Architecture   : {platform.machine()}')
-          print(f'Platform       : {platform.platform()}')
-          print(f'macOS interne  : {platform.mac_ver()[0]}')
-          print(f'Deployment Tgt : {os.environ.get(\"MACOSX_DEPLOYMENT_TARGET\", \"Non défini\")}')
+          print(f'macOS perçu    : {platform.mac_ver()[0]}')
+          print(f'Déploiement    : {os.environ.get(\"MACOSX_DEPLOYMENT_TARGET\")}')
+          print('\nTop 5 Wheels acceptés :')
+          print('\n'.join([str(t) for t in tags.sys_tags()][:5]))
           "
-          
-          echo "=== 3. CE QUE PIP ACCEPTE (Top 15 des Wheels compatibles) ==="
-          arch -x86_64 python -c "from packaging import tags; print('\n'.join([str(t) for t in tags.sys_tags()][:15]))"
 
-          # 3. Installation stricte : --only-binary=:all: empêche la compilation locale
-          # Pip sera forcé de trouver des wheels compatibles macOS 11 x86_64 sur PyPI
-          arch -x86_64 python -m pip install -r backend/requirements_old_version.txt --only-binary=:all:
+          # 3. Installation naturelle (sans forcer only-binary pour laisser passer srt)
+          arch -x86_64 python -m pip install -r backend/requirements_old_version.txt
 
           # 4. Dépendances de PyInstaller
           arch -x86_64 python -m pip install macholib altgraph pyinstaller-hooks-contrib
         shell: bash
-      # 5. Construire l'API avec PyInstaller
+        # 5. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
           source venv/bin/activate
