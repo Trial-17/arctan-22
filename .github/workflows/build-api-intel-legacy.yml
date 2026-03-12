@@ -77,6 +77,7 @@ jobs:
           arch -x86_64 /usr/local/bin/python3 --version
           arch -x86_64 /usr/local/bin/python3 -c "import platform; print(platform.machine())"
 
+          
       # 4. Crée l'environnement virtuel Intel et installe les dépendances
       - name: Install Python dependencies
         run: |
@@ -104,8 +105,7 @@ jobs:
           "
           
           echo "=== 3. CE QUE PIP ACCEPTE (Top 15 des Wheels compatibles) ==="
-          arch -x86_64 python -m pip debug --tags | head -n 15
-
+          arch -x86_64 python -c "from packaging import tags; print('\n'.join([str(t) for t in tags.sys_tags()][:15]))"
 
           # 3. Installation stricte : --only-binary=:all: empêche la compilation locale
           # Pip sera forcé de trouver des wheels compatibles macOS 11 x86_64 sur PyPI
@@ -114,8 +114,6 @@ jobs:
           # 4. Dépendances de PyInstaller
           arch -x86_64 python -m pip install macholib altgraph pyinstaller-hooks-contrib
         shell: bash
-        
-
       # 5. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
