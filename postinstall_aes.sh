@@ -43,4 +43,9 @@ chown -R "$USER" "$BASE_PATH"
 chmod -R u+rwX "$BASE_PATH"
 
 echo "✅ Structure API et fichiers prêts dans : $BASE_PATH"
+
+echo "🚀 Lancement de l'API..."
+sudo -u "$USER" nohup "$API_EXECUTABLE" > /dev/null 2>&1 &
+echo "   ✅ API lancée."
+
 exit 0

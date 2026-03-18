@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BlackmagicDesign>
+    <Plugin>
+        <Id>com.blackmagicdesign.resolve.davinci-gpt</Id>
+        <Name>DavinciGPT</Name>
+        <Version>1.0</Version>
+        <Description>DavinciGPT</Description>
+        <FilePath>main.js</FilePath>
+    </Plugin>
+</BlackmagicDesign>

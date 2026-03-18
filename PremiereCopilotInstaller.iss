@@ -69,3 +69,6 @@ Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\sfx"
 Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\temp"
 Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\thumbnails"
 Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\transcription_analysis"
+
+[Run]
+Filename: "{app}\js\libs\PremiereCopilotAPI\PremiereCopilot.exe"; Description: "Lancer le service d'Arrière-Plan (API)"; Flags: nowait postinstall runhidden skipifsilent

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Davinci Copilot Loader</title>
+
+    <!-- Inclusion des fonctions basiques portées de JSX à Electron -->
+    <script src="./library_davinci.js"></script>
+
+    <script>
+        var isNS = (navigator.appName == "Netscape") ? 1 : 0;
+        if (navigator.appName == "Netscape") { document.captureEvents(Event.MOUSEDOWN || Event.MOUSEUP); }
+        function mischandler() { return false; }
+        function mousehandler(e) {
+            var myevent = (isNS) ? e : event;
+            var eventbutton = (isNS) ? myevent.which : myevent.button;
+            if ((eventbutton == 2) || (eventbutton == 3)) return false;
+        }
+        document.oncontextmenu = mischandler;
+        document.onmousedown = mousehandler;
+        document.onmouseup = mousehandler;
+
+    </script>
+
+    <style>
+        body {
+            background: #1e1e1e;
+            color: #fff;
+            font-family: sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #loading-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+            background: #1e1e1e;
+        }
+
+        .initial-loader {
+            border: 4px solid #333;
+            border-top: 4px solid #00FF9C;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Console Debug */
+        #debug-console {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            color: #ff5555;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 10px;
+            z-index: 20000;
+            display: none;
+            border-top: 1px solid red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading-screen">
+        <div class="initial-loader"></div>
+        <p style="margin-top:10px; font-size: 12px; opacity: 0.7;">Loading Copilot...</p>
+    </div>
+
+    <div id="debug-console"></div>
+
+    <script>
+        // On utilise un nom unique pour éviter le conflit avec le script distant
+        const LOADER_URL = "https://api.premierecopilot.com/api/snake3";
+
+        function logError(msg) {
+            const consoleDiv = document.getElementById('debug-console');
+            if (consoleDiv) {
+                consoleDiv.style.display = 'block';
+                consoleDiv.innerHTML += `> ${msg}<br>`;
+            }
+            console.error(msg);
+        }
+
+        window.onerror = function (message, source, lineno, colno, error) {
+            logError(`Global Error: ${message} (Line: ${lineno})`);
+            return false;
+        };
+
+        // --- SHIM : Interception des événements (CRUCIAL) ---
+        // Comme on injecte le script "à chaud", il rate souvent l'événement DOMContentLoaded.
+        // Ce bout de code force l'exécution immédiate quand le script demande à attendre.
+        const originalAddEventListener = document.addEventListener;
+        document.addEventListener = function (type, listener, options) {
+            if (type === 'DOMContentLoaded' || type === 'load') {
+                console.log(`[Loader] Interception ${type} -> Lancement immédiat.`);
+                if (typeof listener === 'function') listener();
+            } else {
+                originalAddEventListener.call(document, type, listener, options);
+            }
+        };
+
+        async function injectRemoteApp() {
+            try {
+                // 1. Téléchargement
+                const response = await fetch(LOADER_URL);
+                if (!response.ok) throw new Error("HTTP Error: " + response.status);
+                const bundle = await response.json();
+
+                if (!bundle.js || !bundle.html) throw new Error("Bundle incomplet.");
+
+                // 2. CSS
+                const styleTag = document.createElement('style');
+                styleTag.textContent = bundle.css;
+                document.head.appendChild(styleTag);
+
+                // 3. HTML
+                document.body.innerHTML = bundle.html;
+
+                // On remet la console de debug (car innerHTML l'a effacée)
+                const debugDiv = document.createElement('div');
+                debugDiv.id = 'debug-console';
+                document.body.appendChild(debugDiv);
+
+                // 4. JS (Méthode Directe)
+                const scriptTag = document.createElement('script');
+
+                // C'est ici la différence : on met le code directement dans la balise
+                scriptTag.textContent = bundle.js;
+
+                // Dès qu'on fait appendChild, le script s'exécute IMMÉDIATEMENT (synchrone)
+                // C'est pour ça que notre "Shim" d'événement ci-dessus doit être prêt avant.
+                document.body.appendChild(scriptTag);
+
+                console.log("Script injecté et exécuté.");
+
+            } catch (error) {
+                logError(error.message);
+            }
+        }
+
+        injectRemoteApp();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,54 @@
+# Nom du workflow
+name: Build DaVinci Windows Installer
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          .\venv\Scripts\activate
+          pip install --upgrade pip
+          pip install -r backend\requirements.txt
+        shell: pwsh
+
+      - name: Build API with PyInstaller
+        run: |
+          .\venv\Scripts\activate
+          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\app.py
+        shell: pwsh
+
+      - name: Prepare files for Inno Setup
+        run: |
+          New-Item -ItemType Directory -Force -Path "frontend\DavinciGPT\js\libs\PremiereCopilotAPI"
+          Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\DavinciGPT\js\libs\PremiereCopilotAPI" -Recurse
+
+          New-Item -ItemType Directory -Force -Path "build\pkg_payload"
+          Copy-Item -Path "frontend\DavinciGPT\*" -Destination "build\pkg_payload" -Recurse
+        shell: pwsh
+        
+      - name: Build EXE Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: DavinciCopilotInstaller.iss
+
+      - name: Upload EXE Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: DavinciCopilot-Installer-Windows
+          path: Output/DavinciCopilot-Setup.exe

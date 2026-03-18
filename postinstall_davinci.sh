@@ -1,8 +1,8 @@
 #!/bin/bash
 
-echo "📁 Création de la structure API Premiere Copilot..."
+echo "📁 Création de la structure API DaVinciGPT..."
 
-BASE_PATH="$HOME/Documents/Adobe/Premiere Pro/Premiere Copilot"
+BASE_PATH="$HOME/Documents/DaVinciGPT"
 mkdir -p "$BASE_PATH"
 
 # Liste des dossiers à créer
@@ -24,7 +24,7 @@ do
 done
 
 # --- Rendre l'API exécutable ---
-API_EXECUTABLE='/Library/Application Support/Adobe/CEP/extensions/PremiereGPTBeta/js/libs/PremiereCopilotAPI/PremiereCopilot'
+API_EXECUTABLE='/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/DavinciGPT/js/libs/PremiereCopilotAPI/PremiereCopilot'
 
 echo "⚙️  Vérification de l'exécutable de l'API..."
 if [ -f "$API_EXECUTABLE" ]; then
@@ -45,3 +45,5 @@ echo "✅ Structure API et fichiers prêts dans : $BASE_PATH"
 echo "🚀 Lancement de l'API..."
 sudo -u "$USER" nohup "$API_EXECUTABLE" > /dev/null 2>&1 &
 echo "   ✅ API lancée."
+
+exit 0
