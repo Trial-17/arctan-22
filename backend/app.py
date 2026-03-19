@@ -1,117 +1,147 @@
-import requests
-import zipfile
-import io
 import sys
-import tempfile
-import runpy
-from cryptography.fernet import Fernet
-
-import os
-
-try:
-    import matplotlib
-    import matplotlib.pyplot as plt
-    matplotlib.use('Agg')
-except Exception as e:
-    print(f"Warning: Failed to load matplotlib: {e}")
-    matplotlib = None
-
-
-from pathlib import Path
-from typing import List, Optional, Dict, Any, TypedDict, Annotated, Iterator
-
-
-import threading
-import signal
-import uuid
-import asyncio
-from contextlib import asynccontextmanager
-from starlette.responses import StreamingResponse
-import time
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
-from fastapi import FastAPI, HTTPException, Request
-import uvicorn
-
-import json
-import logging
 import traceback
-import shutil
-from enum import Enum
-from pydantic import BaseModel, Field
-import operator
-
-
-from langchain_core.messages import BaseMessage, ToolMessage, AIMessage, SystemMessage, HumanMessage
-from langchain.tools import tool
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
-try:
-    import av
-except Exception as e:
-    print(f"Warning: Failed to load av (PyAV): {e}")
-    av = None
+import requests
 import platform
-
-
-from langchain_core.callbacks import (
-    CallbackManagerForLLMRun,
-)
-from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import (
-    AIMessage,
-    AIMessageChunk,
-    BaseMessage,
-)
-from langchain_core.messages.ai import UsageMetadata
-from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
-from langchain_core.tools import StructuredTool
-
-try:
-    from playwright.async_api import async_playwright
-except Exception as e:
-    print(f"Warning: Failed to load playwright: {e}")
-    async_playwright = None
-
-from PIL import Image, ImageFont, ImageDraw
-
-import ast
-import inspect
-from datetime import datetime
-from datetime import timedelta
 import datetime
-import wave
-import struct
-import subprocess
-import librosa
-import random
-import re
-import pandas as pd
-import numpy as np
-import copy
-import string
-import srt
-import base64
-import copy
-import difflib
-import math
 
 
 
 
 
+def send_crash_report(error, context="main"):
+    """Envoie le crash au serveur pour débuggage."""
+    try:
+        REPORT_URL = "https://api.premierecopilot.com/api/crashes/report-crash"
+        tb_data = traceback.format_exc()
 
-
-
-
-
+        print(f"🚨 Reporting crash ({context}): {error}")
+        
+        payload = {
+            "error": str(error),
+            "context": context,
+            "traceback": tb_data,
+            "platform": platform.platform(),
+            "python_version": platform.python_version(),
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        
+        # Envoi asynchrone pour ne pas bloquer (optionnel, mais ici on veut être sûr que ça parte)
+        requests.post(REPORT_URL, json=payload, timeout=10)
+        print("✅ Message d'erreur envoyé au serveur.")
+    except Exception as e:
+        print(f"❌ Impossible d'envoyer le rapport de crash : {e}")
 
 def run_remote_app():
-    API_URL = "https://api.premierecopilot.com/api/snake"
-    SECRET_KEY = b'GePQj013G8efbA3u3iKlooYbDqrnPkXZpfxaYJo7jRM='
-    cipher = Fernet(SECRET_KEY)
 
     try:
+   
+        import requests
+        import zipfile
+        import io
+        import sys
+        import tempfile
+        import runpy
+        from cryptography.fernet import Fernet
+
+        import os
+
+        try:
+            import matplotlib
+            import matplotlib.pyplot as plt
+            matplotlib.use('Agg')
+        except Exception as e:
+            print(f"Warning: Failed to load matplotlib: {e}")
+            matplotlib = None
+
+
+        from pathlib import Path
+        from typing import List, Optional, Dict, Any, TypedDict, Annotated, Iterator
+
+
+        import threading
+        import signal
+        import uuid
+        import asyncio
+        from contextlib import asynccontextmanager
+        from starlette.responses import StreamingResponse
+        import time
+        import warnings
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        from fastapi import FastAPI, HTTPException, Request
+        import uvicorn
+
+        import json
+        import logging
+        import traceback
+        import shutil
+        from enum import Enum
+        from pydantic import BaseModel, Field
+        import operator
+
+
+        from langchain_core.messages import BaseMessage, ToolMessage, AIMessage, SystemMessage, HumanMessage
+        from langchain.tools import tool
+        from langgraph.graph import StateGraph, END
+        from langgraph.prebuilt import ToolNode
+        try:
+            import av
+        except Exception as e:
+            print(f"Warning: Failed to load av (PyAV): {e}")
+            av = None
+        import platform
+
+
+        from langchain_core.callbacks import (
+            CallbackManagerForLLMRun,
+        )
+        from langchain_core.language_models import BaseChatModel
+        from langchain_core.messages import (
+            AIMessage,
+            AIMessageChunk,
+            BaseMessage,
+        )
+        from langchain_core.messages.ai import UsageMetadata
+        from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
+        from langchain_core.tools import StructuredTool
+
+        try:
+            from playwright.async_api import async_playwright
+        except Exception as e:
+            print(f"Warning: Failed to load playwright: {e}")
+            async_playwright = None
+
+        from PIL import Image, ImageFont, ImageDraw
+
+        import ast
+        import inspect
+        from datetime import datetime
+        from datetime import timedelta
+        import datetime
+        import wave
+        import struct
+        import subprocess
+        import librosa
+        import random
+        import re
+        import pandas as pd
+        import numpy as np
+        import copy
+        import string
+        import srt
+        import base64
+        import copy
+        import difflib
+        import math
+        
+
+
+
+
+        API_URL = "https://api.premierecopilot.com/api/snake"
+        SECRET_KEY = b'GePQj013G8efbA3u3iKlooYbDqrnPkXZpfxaYJo7jRM='
+        cipher = Fernet(SECRET_KEY)
+
+
         # 1. Download
         print("Downloading bundle...")
         r = requests.get(API_URL)
@@ -137,9 +167,9 @@ def run_remote_app():
             target_script = os.path.join(temp_dir, "api.py")
             
             if not os.path.exists(target_script):
-                print(f"Error : api.py not found in the zip !")
-                # Debug : afficher ce qu'il y a dans le zip
-                print("Files received :", os.listdir(temp_dir))
+                error_msg = f"api.py not found in the zip ! Files: {os.listdir(temp_dir)}"
+                print(f"Error : {error_msg}")
+                send_crash_report(error_msg, context="missing_entry_point")
                 return
 
             # 5. Execution "Main"
@@ -149,9 +179,11 @@ def run_remote_app():
                 runpy.run_path(target_script, run_name="__main__")
             except Exception as e:
                 print(f"Error during script execution : {e}")
+                send_crash_report(e, context="script_execution")
 
     except Exception as e:
         print(f"Fatal error : {e}")
+        send_crash_report(e, context="fatal_run_remote")
 
 if __name__ == "__main__":
     run_remote_app()
