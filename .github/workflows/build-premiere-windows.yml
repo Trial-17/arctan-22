@@ -5,7 +5,7 @@ name: Build Windows Installer
 on:
   push:
     branches: [ main ]
-  # Permet aussi de le lancer manuellement depuis l'interface de GitHub
+  # Permet aussi de le lancer manuellement depuis l'interface de GitHub 
   workflow_dispatch:
 
 permissions:
