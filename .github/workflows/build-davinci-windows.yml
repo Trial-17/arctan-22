@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Python dependencies
+      - name: Install Python dependencies 
         run: |
           python -m venv venv
           .\venv\Scripts\activate
