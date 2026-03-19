@@ -3,10 +3,17 @@ name: Build macOS Installer (Legacy Intel)
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  STABLE_TAG: "api-legacy-mac-latest"
 
 jobs:
   build-macos-intel:
@@ -260,3 +267,29 @@ jobs:
         with:
           name: PremiereCopilot-Installer-Legacy-${{ matrix.platform }}
           path: build/PremiereCopilot-Installer.pkg
+
+      - name: Rename PKG for Release
+        run: mv build/PremiereCopilot-Installer.pkg build/PremiereCopilot-Installer-Legacy-${{ matrix.platform }}.pkg
+
+      - name: Update Latest Release (Lien Stable)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.STABLE_TAG }}
+          name: Latest Stable Version (Legacy Intel Mac)
+          files: build/PremiereCopilot-Installer-Legacy-${{ matrix.platform }}.pkg
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Versioned Release (Historique)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-legacy-${{ matrix.platform }}
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (Legacy Intel Mac)
+          files: build/PremiereCopilot-Installer-Legacy-${{ matrix.platform }}.pkg
+          generate_release_notes: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

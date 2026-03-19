@@ -10,7 +10,11 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
+
+env:
+  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  STABLE_TAG: "premiere-win-latest"
 
 jobs:
   build-windows-installer:
@@ -124,3 +128,26 @@ jobs:
           name: PremiereCopilot-Installer-Windows
           # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
           path: Output/PremiereCopilot-Setup.exe
+
+      - name: Update Latest Release (Lien Stable)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.STABLE_TAG }}
+          name: Latest Stable Version (Windows)
+          files: Output/PremiereCopilot-Setup.exe
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Versioned Release (Historique)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-win
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (Windows)
+          files: Output/PremiereCopilot-Setup.exe
+          generate_release_notes: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

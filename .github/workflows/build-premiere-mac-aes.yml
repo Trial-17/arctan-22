@@ -3,10 +3,17 @@ name: Build macOS AES
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  STABLE_TAG: "premiere-mac-aes-latest"
 
 jobs:
   build-macos:
@@ -225,3 +232,26 @@ jobs:
         with:
           name: PremiereCopilot-Installer-${{ matrix.platform }}-aescripts
           path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
+
+      - name: Update Latest Release (Lien Stable)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.STABLE_TAG }}
+          name: Latest Stable Version (MacOS AES)
+          files: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Versioned Release (Historique)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-aes-${{ matrix.platform }}
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS AES - ${{ matrix.platform }})
+          files: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
+          generate_release_notes: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,7 +8,11 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
+
+env:
+  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  STABLE_TAG: "davinci-win-latest"
 
 jobs:
   build-windows-installer:
@@ -92,3 +96,26 @@ jobs:
         with:
           name: DavinciCopilot-Installer-Windows
           path: Output/DavinciCopilot-Setup.exe
+
+      - name: Update Latest Release (Lien Stable)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.STABLE_TAG }}
+          name: Latest Stable Version (Windows)
+          files: Output/DavinciCopilot-Setup.exe
+          make_latest: false # On évite de polluer le tag "Latest" global de GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Versioned Release (Historique)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-win
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (Windows)
+          files: Output/DavinciCopilot-Setup.exe
+          generate_release_notes: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,9 +2,13 @@
 name: Build DaVinci macOS Installers
 
 on:
-  # push:
-  #   branches: [ main ]
-  workflow_dispatch:
+  push:
+permissions:
+  contents: write
+
+env:
+  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  STABLE_TAG: "davinci-mac-latest"
 
 jobs:
   build-macos:
@@ -141,3 +145,29 @@ jobs:
         with:
           name: DavinciCopilot-Installer-${{ matrix.platform }}
           path: build/DavinciCopilot-Installer.pkg
+
+      - name: Rename PKG for Release
+        run: mv build/DavinciCopilot-Installer.pkg build/DavinciCopilot-Installer-${{ matrix.platform }}.pkg
+
+      - name: Update Latest Release (Lien Stable)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.STABLE_TAG }}
+          name: Latest Stable Version (MacOS)
+          files: build/DavinciCopilot-Installer-${{ matrix.platform }}.pkg
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Versioned Release (Historique)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-${{ matrix.platform }}
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS - ${{ matrix.platform }})
+          files: build/DavinciCopilot-Installer-${{ matrix.platform }}.pkg
+          generate_release_notes: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
