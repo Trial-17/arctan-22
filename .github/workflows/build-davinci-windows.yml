@@ -6,6 +6,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build-windows-installer:
     runs-on: windows-latest
@@ -27,11 +31,33 @@ jobs:
           pip install -r backend\requirements.txt
         shell: pwsh
 
+      # Connexion à Azure pour Artifact Signing (OIDC)
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Build API with PyInstaller
         run: |
           .\venv\Scripts\activate
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\app.py
         shell: pwsh
+
+      # Signer les binaires de l'API avec Artifact Signing
+      - name: Sign API Binaries
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_TRUST_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUST_SIGNING_PROFILE }}
+          files-folder: 'dist/PremiereCopilot'
+          files-folder-filter: 'exe,dll,pyd'
+          files-folder-recurse: true
+          file-digest: 'SHA256'
+          timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
+          timestamp-digest: 'SHA256'
 
       - name: Prepare files for Inno Setup
         run: |
@@ -46,6 +72,19 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           path: DavinciCopilotInstaller.iss
+
+      # Signer l'installeur final .EXE avec Artifact Signing
+      - name: Sign EXE Installer
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_TRUST_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUST_SIGNING_PROFILE }}
+          files-folder: 'Output'
+          files-folder-filter: 'exe'
+          file-digest: 'SHA256'
+          timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
+          timestamp-digest: 'SHA256'
 
       - name: Upload EXE Installer
         uses: actions/upload-artifact@v4
