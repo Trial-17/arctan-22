@@ -302,7 +302,9 @@ jobs:
                    --identifier com.trial17.premierecopilot \
                    --version 1.0 \
                    --sign "$SIGNING_IDENTITY" \
-                   build/PremiereCopilot-Installer.pkg               
+                   build/PremiereCopilot-Installer.pkg    
+                   
+                   
       # 12. Notariser et agrafer l'installeur PKG (Native notarytool)
       - name: Notarize and Staple PKG
         run: |
@@ -313,13 +315,31 @@ jobs:
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
 
           echo "--- Submitting to Apple Notary Service ---"
+          # On empêche le script de crasher immédiatement en cas de refus d'Apple
+          set +e
           xcrun notarytool submit build/PremiereCopilot-Installer.pkg \
             --keychain-profile "notary-profile" \
-            --wait
+            --wait > notary_output.txt 2>&1
+          NOTARY_EXIT_CODE=$?
+          set -e
+          
+          # On affiche ce qui s'est passé
+          cat notary_output.txt
+          
+          # Si le code de sortie n'est pas 0 (Invalid), on va chercher le log exact
+          if [ $NOTARY_EXIT_CODE -ne 0 ]; then
+            echo "::error::La notarisation a été rejetée par Apple. Récupération du rapport détaillé..."
+            # On extrait l'ID de soumission avec une regex
+            SUBMISSION_ID=$(grep -oEo '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' notary_output.txt | head -n 1)
+            
+            echo "--- RAPPORT D'ERREUR APPLE NOTARY SERVICE ---"
+            xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "notary-profile"
+            echo "---------------------------------------------"
+            exit 1
+          fi
 
           echo "--- Stapling Ticket ---"
           xcrun stapler staple build/PremiereCopilot-Installer.pkg
-
       # 13. Uploader l'artefact final
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
