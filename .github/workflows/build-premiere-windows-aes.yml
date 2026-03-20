@@ -3,12 +3,13 @@ name: Build Windows AES
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
-  push:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: write
 
 env:
@@ -40,12 +41,35 @@ jobs:
           pip install -r backend\requirements.txt
         shell: pwsh
 
+      # 3.1. Connexion à Azure pour Artifact Signing (OIDC)
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          allow-no-subscriptions: true
+
       # 4. Construire l'API avec PyInstaller
       - name: Build API with PyInstaller
         run: |
           .\venv\Scripts\activate
           python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\app.py
         shell: pwsh
+
+      # 4.1. Signer les binaires de l'API avec Artifact Signing
+      - name: Sign API Binaries
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_TRUST_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUST_SIGNING_PROFILE }}
+          files-folder: 'dist/PremiereCopilot'
+          files-folder-filter: 'exe,dll,pyd'
+          files-folder-recurse: true
+          file-digest: 'SHA256'
+          timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
+          timestamp-digest: 'SHA256'
 
       # 5. Préparer les fichiers pour le ZXP
       - name: Prepare files for ZXP
@@ -83,6 +107,19 @@ jobs:
         with:
           # Assurez-vous que ce chemin vers votre script Inno Setup est correct
           path: PremiereCopilotInstaller_aes.iss
+
+      # 8.1. Signer l'installeur final .EXE avec Artifact Signing
+      - name: Sign EXE Installer
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_TRUST_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUST_SIGNING_PROFILE }}
+          files-folder: 'Output'
+          files-folder-filter: 'exe'
+          file-digest: 'SHA256'
+          timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
+          timestamp-digest: 'SHA256'
 
       # 9. Créer le ZIP final avec l'installeur EXE et le Quickstart.pdf
       - name: Create Release ZIP

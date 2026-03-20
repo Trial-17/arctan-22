@@ -177,11 +177,17 @@ jobs:
         shell: bash
 
       # 9. Préparer les fichiers pour le ZXP
+      # - name: Prepare files for ZXP
+      #   run: |
+      #     mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
+      #     # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
+      #     cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
       - name: Prepare files for ZXP
         run: |
           mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
-          # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
-          cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
+          
+          # LE SECRET EST ICI : L'option -L force la copie du VRAI fichier au lieu du lien symbolique
+          cp -R -L dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
 
       # 10. Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
@@ -214,10 +220,64 @@ jobs:
 
 
       # 11. Construire et signer l'installeur PKG
+      # - name: Build and Sign PKG Installer
+      #   run: |
+      #     mkdir -p build/pkg_root/PremiereGPTBeta
+      #     unzip frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
+      #     mkdir -p build/scripts
+      #     chmod +x preinstall.sh postinstall.sh
+      #     cp preinstall.sh build/scripts/preinstall
+      #     cp postinstall.sh build/scripts/postinstall
+          
+      #     echo "--- Available identities in build.keychain ---"
+      #     security find-identity -v build.keychain
+      #     echo "---------------------------------------------"
+
+      #     # Correction : On cherche dans toutes les identités (-v)
+      #     SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          
+      #     if [ -z "$SIGNING_IDENTITY" ]; then
+      #       echo "::error::Developer ID Installer identity not found."
+      #       exit 1
+      #     fi
+
+      #     echo "Using Installer signing identity: $SIGNING_IDENTITY"
+      #     pkgbuild --root build/pkg_root \
+      #              --install-location "/Library/Application Support/Adobe/CEP/extensions" \
+      #              --scripts build/scripts \
+      #              --identifier com.trial17.premierecopilot \
+      #              --version 1.0 \
+      #              --sign "$SIGNING_IDENTITY" \
+      #              build/PremiereCopilot-Installer.pkg
+      
+
+
+      # 11. Construire et signer l'installeur PKG
       - name: Build and Sign PKG Installer
         run: |
           mkdir -p build/pkg_root/PremiereGPTBeta
           unzip frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
+          
+          echo "--- AUTOMATED TEST: Verifying Extracted Python Engine ---"
+          PYTHON_PATH="build/pkg_root/PremiereGPTBeta/js/libs/PremiereCopilotAPI/_internal/Python"
+          
+          # 1. Vérifie si le fichier existe (les liens cassés retournent faux ici)
+          if [ ! -f "$PYTHON_PATH" ]; then
+            echo "::error::Le fichier Python a disparu ou le lien est cassé après l'unzip !"
+            exit 1
+          fi
+          
+          # 2. Vérifie la taille du fichier (doit faire plusieurs Mo, pas juste 50 octets)
+          FILE_SIZE=$(stat -f%z "$PYTHON_PATH")
+          echo "Taille du moteur Python extrait : $FILE_SIZE octets"
+          
+          if [ "$FILE_SIZE" -lt 1000000 ]; then
+            echo "::error::Le fichier Python est trop petit ($FILE_SIZE octets). C'est un lien symbolique cassé !"
+            exit 1
+          fi
+          echo "✅ Test réussi : Le moteur Python est un vrai fichier physique intact !"
+          echo "---------------------------------------------------------"
+
           mkdir -p build/scripts
           chmod +x preinstall.sh postinstall.sh
           cp preinstall.sh build/scripts/preinstall
@@ -242,8 +302,7 @@ jobs:
                    --identifier com.trial17.premierecopilot \
                    --version 1.0 \
                    --sign "$SIGNING_IDENTITY" \
-                   build/PremiereCopilot-Installer.pkg
-      
+                   build/PremiereCopilot-Installer.pkg               
       # 12. Notariser et agrafer l'installeur PKG (Native notarytool)
       - name: Notarize and Staple PKG
         run: |

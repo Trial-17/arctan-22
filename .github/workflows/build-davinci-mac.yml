@@ -2,7 +2,10 @@
 name: Build DaVinci macOS Installers
 
 on:
-  push:
+  # push:
+  #   branches: [ main ]
+  workflow_dispatch:
+
 permissions:
   contents: write
 

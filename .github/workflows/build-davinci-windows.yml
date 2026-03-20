@@ -2,8 +2,8 @@
 name: Build DaVinci Windows Installer
 
 on:
-  push:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
   workflow_dispatch:
 
 permissions:
