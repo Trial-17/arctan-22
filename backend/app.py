@@ -68,6 +68,7 @@ def run_remote_app():
         import warnings
         warnings.filterwarnings("ignore", category=FutureWarning)
         from fastapi import FastAPI, HTTPException, Request
+        from fastapi.middleware.cors import CORSMiddleware
         import uvicorn
 
         import json
@@ -78,7 +79,7 @@ def run_remote_app():
         from pydantic import BaseModel, Field
         import operator
 
-
+        
         from langchain_core.messages import BaseMessage, ToolMessage, AIMessage, SystemMessage, HumanMessage
         from langchain.tools import tool
         from langgraph.graph import StateGraph, END
