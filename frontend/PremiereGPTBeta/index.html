@@ -96,6 +96,7 @@
     <script>
         // On utilise un nom unique pour éviter le conflit avec le script distant
         const LOADER_URL = "https://api.premierecopilot.com/api/snake3";
+        window.appReady = false; 
 
         function logError(msg) {
             const consoleDiv = document.getElementById('debug-console');
@@ -126,40 +127,78 @@
 
         async function injectRemoteApp() {
             try {
-                // 1. Téléchargement
                 const response = await fetch(LOADER_URL);
                 if (!response.ok) throw new Error("HTTP Error: " + response.status);
                 const bundle = await response.json();
 
                 if (!bundle.js || !bundle.html) throw new Error("Bundle incomplet.");
 
-                // 2. CSS
+                // 1. CSS
                 const styleTag = document.createElement('style');
                 styleTag.textContent = bundle.css;
                 document.head.appendChild(styleTag);
 
-                // 3. HTML
+                // 2. HTML (Contenu du body distant)
                 document.body.innerHTML = bundle.html;
 
-                // On remet la console de debug (car innerHTML l'a effacée)
+                // On s'assure d'avoir la console de debug après le innerHTML
                 const debugDiv = document.createElement('div');
                 debugDiv.id = 'debug-console';
                 document.body.appendChild(debugDiv);
 
-                // 4. JS (Méthode Directe)
+                // 3. JS
                 const scriptTag = document.createElement('script');
-
-                // C'est ici la différence : on met le code directement dans la balise
                 scriptTag.textContent = bundle.js;
-
-                // Dès qu'on fait appendChild, le script s'exécute IMMÉDIATEMENT (synchrone)
-                // C'est pour ça que notre "Shim" d'événement ci-dessus doit être prêt avant.
                 document.body.appendChild(scriptTag);
 
-                console.log("Script injecté et exécuté.");
+                console.log("[Loader] Injecté depuis le serveur distant.");
+
+                // --- WATCHDOG ---
+                // On laisse 8 secondes au script distant pour dire "Je suis vivant" (window.appReady = true)
+                setTimeout(() => {
+                    if (!window.appReady) {
+                        console.warn("[Loader] Timeout : Le JS distant n'a pas répondu. Bascule locale forcée.");
+                        injectLocalApp();
+                    }
+                }, 8000);
 
             } catch (error) {
-                logError(error.message);
+                console.warn("[Loader] Échec distant, bascule sur le mode local :", error.message);
+                injectLocalApp();
+            }
+        }
+
+        async function injectLocalApp() {
+            try {
+                // 1. Charger le CSS local
+                const styleLink = document.createElement('link');
+                styleLink.rel = 'stylesheet';
+                styleLink.href = 'css/style.min.css';
+                document.head.appendChild(styleLink);
+
+                // 2. Charger et parser l'index.html local (comme le fait l'API)
+                const response = await fetch('js/index.html');
+                const fullHtml = await response.text();
+                
+                // Regex pour extraire le contenu du body (identique à routes.py)
+                const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                const htmlContent = bodyMatch ? bodyMatch[1] : fullHtml;
+                
+                document.body.innerHTML = htmlContent;
+
+                // Restauration console debug
+                const debugDiv = document.createElement('div');
+                debugDiv.id = 'debug-console';
+                document.body.appendChild(debugDiv);
+
+                // 3. Charger le JS local
+                const scriptTag = document.createElement('script');
+                scriptTag.src = 'js/bundle.min.js';
+                document.body.appendChild(scriptTag);
+
+                console.log("[Loader] Injecté depuis les fichiers locaux.");
+            } catch (e) {
+                logError("Erreur critique (Fallback Local échoué): " + e.message);
             }
         }
 
