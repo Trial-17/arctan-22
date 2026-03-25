@@ -98,6 +98,8 @@
         const LOADER_URL = "https://api.premierecopilot.com/api/snake3";
         window.appReady = false; 
 
+        let appInjected = false;
+
         function logError(msg) {
             const consoleDiv = document.getElementById('debug-console');
             if (consoleDiv) {
@@ -113,8 +115,6 @@
         };
 
         // --- SHIM : Interception des événements (CRUCIAL) ---
-        // Comme on injecte le script "à chaud", il rate souvent l'événement DOMContentLoaded.
-        // Ce bout de code force l'exécution immédiate quand le script demande à attendre.
         const originalAddEventListener = document.addEventListener;
         document.addEventListener = function (type, listener, options) {
             if (type === 'DOMContentLoaded' || type === 'load') {
@@ -126,6 +126,7 @@
         };
 
         async function injectRemoteApp() {
+            if (appInjected) return;
             try {
                 const response = await fetch(LOADER_URL);
                 if (!response.ok) throw new Error("HTTP Error: " + response.status);
@@ -133,15 +134,17 @@
 
                 if (!bundle.js || !bundle.html) throw new Error("Bundle incomplet.");
 
+                if (appInjected) return;
+                appInjected = true;
+
                 // 1. CSS
                 const styleTag = document.createElement('style');
                 styleTag.textContent = bundle.css;
                 document.head.appendChild(styleTag);
 
-                // 2. HTML (Contenu du body distant)
+                // 2. HTML
                 document.body.innerHTML = bundle.html;
 
-                // On s'assure d'avoir la console de debug après le innerHTML
                 const debugDiv = document.createElement('div');
                 debugDiv.id = 'debug-console';
                 document.body.appendChild(debugDiv);
@@ -151,16 +154,8 @@
                 scriptTag.textContent = bundle.js;
                 document.body.appendChild(scriptTag);
 
+                window.appReady = true; 
                 console.log("[Loader] Injecté depuis le serveur distant.");
-
-                // --- WATCHDOG ---
-                // On laisse 8 secondes au script distant pour dire "Je suis vivant" (window.appReady = true)
-                setTimeout(() => {
-                    if (!window.appReady) {
-                        console.warn("[Loader] Timeout : Le JS distant n'a pas répondu. Bascule locale forcée.");
-                        injectLocalApp();
-                    }
-                }, 8000);
 
             } catch (error) {
                 console.warn("[Loader] Échec distant, bascule sur le mode local :", error.message);
@@ -169,6 +164,9 @@
         }
 
         async function injectLocalApp() {
+            if (appInjected) return;
+            appInjected = true;
+            
             try {
                 // 1. Charger le CSS local
                 const styleLink = document.createElement('link');
@@ -176,33 +174,43 @@
                 styleLink.href = 'css/style.min.css';
                 document.head.appendChild(styleLink);
 
-                // 2. Charger et parser l'index.html local (comme le fait l'API)
+                // 2. Charger et parser l'index.html local
                 const response = await fetch('js/index.html');
                 const fullHtml = await response.text();
                 
-                // Regex pour extraire le contenu du body (identique à routes.py)
-                const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                const htmlContent = bodyMatch ? bodyMatch[1] : fullHtml;
+                // On retire les scripts du HTML local pour éviter le double chargement par le navigateur lors du innerHTML
+                const cleanHtml = fullHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+                const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                const htmlContent = bodyMatch ? bodyMatch[1] : cleanHtml;
                 
                 document.body.innerHTML = htmlContent;
 
-                // Restauration console debug
                 const debugDiv = document.createElement('div');
                 debugDiv.id = 'debug-console';
                 document.body.appendChild(debugDiv);
 
-                // 3. Charger le JS local
+                // 3. Charger le JS local explicitement
                 const scriptTag = document.createElement('script');
                 scriptTag.src = 'js/bundle.min.js';
                 document.body.appendChild(scriptTag);
 
+                window.appReady = true;
                 console.log("[Loader] Injecté depuis les fichiers locaux.");
             } catch (e) {
                 logError("Erreur critique (Fallback Local échoué): " + e.message);
             }
         }
 
+        // --- WATCHDOG ---
+        setTimeout(() => {
+            if (!window.appReady && !appInjected) {
+                console.warn("[Loader] Timeout : Bascule locale forcée.");
+                injectLocalApp();
+            }
+        }, 8000);
+
         injectRemoteApp();
+
     </script>
 </body>
 
