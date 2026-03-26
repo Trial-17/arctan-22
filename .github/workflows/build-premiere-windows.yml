@@ -13,8 +13,9 @@ permissions:
   contents: write
 
 env:
-  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  PRODUCT_VERSION: "2.0-old-ifx" # Changez ici pour passer à la v2.0, etc.
   STABLE_TAG: "premiere-win-latest"
+  UPDATE_LATEST: "false" # Mettre à "false" pour ne pas écraser le 'latest'
 
 jobs:
   build-windows-installer:
@@ -131,7 +132,7 @@ jobs:
 
       - name: Update Latest Release (Lien Stable)
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && env.UPDATE_LATEST == 'true'
         with:
           tag_name: ${{ env.STABLE_TAG }}
           name: Latest Stable Version (Windows)

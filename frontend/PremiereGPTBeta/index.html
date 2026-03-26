@@ -95,8 +95,8 @@
 
     <script>
         // On utilise un nom unique pour éviter le conflit avec le script distant
-        const LOADER_URL = "https://api.premierecopilot.com/api/snake3";
-        window.appReady = false; 
+        const LOADER_URL = "https://api.premierecopilot.com/api/snake_old";
+        window.appReady = false;
 
         let appInjected = false;
 
@@ -154,7 +154,7 @@
                 scriptTag.textContent = bundle.js;
                 document.body.appendChild(scriptTag);
 
-                window.appReady = true; 
+                window.appReady = true;
                 console.log("[Loader] Injecté depuis le serveur distant.");
 
             } catch (error) {
@@ -166,7 +166,7 @@
         async function injectLocalApp() {
             if (appInjected) return;
             appInjected = true;
-            
+
             try {
                 // 1. Charger le CSS local
                 const styleLink = document.createElement('link');
@@ -177,12 +177,12 @@
                 // 2. Charger et parser l'index.html local
                 const response = await fetch('js/index.html');
                 const fullHtml = await response.text();
-                
+
                 // On retire les scripts du HTML local pour éviter le double chargement par le navigateur lors du innerHTML
                 const cleanHtml = fullHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
                 const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
                 const htmlContent = bodyMatch ? bodyMatch[1] : cleanHtml;
-                
+
                 document.body.innerHTML = htmlContent;
 
                 const debugDiv = document.createElement('div');
