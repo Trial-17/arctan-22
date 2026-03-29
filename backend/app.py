@@ -104,14 +104,9 @@ def run_remote_app():
         from langchain_core.messages.ai import UsageMetadata
         from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
         from langchain_core.tools import StructuredTool
-
-        try:
-            from playwright.async_api import async_playwright
-        except Exception as e:
-            print(f"Warning: Failed to load playwright: {e}")
-            async_playwright = None
-
-        from PIL import Image, ImageFont, ImageDraw
+        
+        from PIL import Image, ImageFont, ImageDraw, ImageFilter
+        import websocket
 
         import ast
         import inspect
