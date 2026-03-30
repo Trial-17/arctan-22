@@ -1,10 +1,10 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
-name: Build macOS AES
+name: Build macOS AES GenAI
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 
 env:
   PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
-  STABLE_TAG: "premiere-mac-aes-latest"
+  STABLE_TAG: "premiere-mac-aes-genai-latest"
 
 jobs:
   build-macos:
@@ -72,78 +72,7 @@ jobs:
           
           echo "✅ Both Application and Installer certificates found in the keychain."
 
-      # 3. Configure l'environnement Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      # 4. Crée l'environnement virtuel et installe les dépendances
-      - name: Install Python dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r backend/requirements.txt
-        shell: bash
-
-      # 5. Construire l'API avec PyInstaller
-      - name: Build API with PyInstaller
-        run: |
-          source venv/bin/activate
-          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/app.py
-        shell: bash
-
-      # 6. Signer correctement tout le bundle PyInstaller
-      # - name: Sign PyInstaller Bundle (Robust Method)
-      #   run: |
-      #     SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          
-      #     echo "Using Application signing identity: $SIGNING_IDENTITY"
-
-      #     # 1. Signe d'abord toutes les librairies et binaires internes avec les droits
-      #     echo "--- Signing all internal binaries and libraries ---"
-      #     find dist/PremiereCopilot/_internal -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist {} \;
-
-      #     # 2. Signe l'exécutable principal en dernier avec les droits
-      #     echo "--- Signing the main executable ---"
-      #     codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist dist/PremiereCopilot
-
-      #     # 3. Vérification finale et stricte de la signature
-      #     echo "--- Verifying final bundle signature ---"
-          # codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
-
-      # 6. Signer correctement tout le bundle PyInstaller (Méthode Manuelle Stricte)
-      - name: Sign PyInstaller Bundle (Correct Method)
-        run: |
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          echo "Using Identity: $SIGNING_IDENTITY"
-
-          # 1. Nettoyer les fichiers gênants (souvent créés par PyInstaller)
-          find dist/PremiereCopilot -name "*.DS_Store" -delete
-
-          # 2. Signer les frameworks et dylibs internes (Inside-Out)
-          # On signe tout ce qui est .so, .dylib, ou binaire dans _internal
-          echo "--- Signing internal libs ---"
-          find dist/PremiereCopilot/_internal -type f \( -name "*.so" -o -name "*.dylib" -o -perm +111 \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {} \;
-
-          # 3. Signer l'exécutable principal (Le fichier binaire, pas le dossier)
-          echo "--- Signing main executable ---"
-          # Attention : PyInstaller crée un dossier "PremiereCopilot" ET un binaire "PremiereCopilot" dedans
-          codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist "dist/PremiereCopilot/PremiereCopilot"
-
-          # 4. Vérification
-          echo "--- Verifying ---"
-          codesign --verify --verbose "dist/PremiereCopilot/PremiereCopilot"
-
-      # 7. Préparer les fichiers pour le ZXP
-      - name: Prepare files for ZXP
-        run: |
-          mkdir -p frontend/PremiereGPTaescripts/js/libs/PremiereCopilotAPI
-          # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
-          cp -R dist/PremiereCopilot/. frontend/PremiereGPTaescripts/js/libs/PremiereCopilotAPI/
-
-      # 8. Créer et signer le ZXP (robuste, avec certificat auto-signé)
+      # 3. Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
@@ -151,9 +80,9 @@ jobs:
           chmod +x ./ZXPSignCmd
 
           echo "--- Generating self-signed certificate for ZXP ---"
-          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescripts" "plugin2025" "PremiereGPTBeta.p12" \
+          ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescripts_genai" "plugin2025" "PremiereGPTBeta.p12" \
             -email "admin@premierecopilot.com" \
-            -orgUnit "PremiereGPTaescripts" \
+            -orgUnit "PremiereGPTaescripts_genai" \
             -validityDays 3650
 
           if [ ! -f "PremiereGPTBeta.p12" ]; then
@@ -162,22 +91,22 @@ jobs:
           fi
 
           echo "--- Signing the extension folder into ZXP ---"
-          ./ZXPSignCmd -sign "./PremiereGPTaescripts" "./PremiereGPTaescripts.zxp" "./PremiereGPTBeta.p12" "plugin2025"
+          ./ZXPSignCmd -sign "./PremiereGPTaescripts_genai" "./PremiereGPTaescripts_genai.zxp" "./PremiereGPTBeta.p12" "plugin2025"
 
-          if [ ! -f "PremiereGPTaescripts.zxp" ]; then
+          if [ ! -f "PremiereGPTaescripts_genai.zxp" ]; then
             echo "::error::Failed to create ZXP."
             exit 1
           fi
 
           echo "--- Verifying ZXP signature ---"
-          ./ZXPSignCmd -verify "./PremiereGPTaescripts.zxp" -certinfo
+          ./ZXPSignCmd -verify "./PremiereGPTaescripts_genai.zxp" -certinfo
 
 
-      # 9. Construire et signer l'installeur PKG
+      # 4. Construire et signer l'installeur PKG
       - name: Build and Sign PKG Installer
         run: |
-          mkdir -p build/pkg_root/PremiereGPTaescripts
-          unzip frontend/PremiereGPTaescripts.zxp -d build/pkg_root/PremiereGPTaescripts
+          mkdir -p build/pkg_root/PremiereGPTaescripts_genai
+          unzip frontend/PremiereGPTaescripts_genai.zxp -d build/pkg_root/PremiereGPTaescripts_genai
           mkdir -p build/scripts
           chmod +x preinstall_aes.sh postinstall_aes.sh
           cp preinstall_aes.sh build/scripts/preinstall
@@ -199,12 +128,12 @@ jobs:
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Adobe/CEP/extensions" \
                    --scripts build/scripts \
-                   --identifier com.trial17.premierecopilot \
+                   --identifier com.trial17.premierecopilot-genai \
                    --version 1.0 \
                    --sign "$SIGNING_IDENTITY" \
-                   build/PremiereCopilot-Installer.pkg
+                   build/PremiereCopilot-aes-GenAI-Installer.pkg
       
-      # 10. Notariser et agrafer l'installeur PKG (Native notarytool)
+      # 5. Notariser et agrafer l'installeur PKG (Native notarytool)
       - name: Notarize and Staple PKG
         run: |
           # Création du profil temporaire pour notarytool
@@ -214,32 +143,32 @@ jobs:
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
 
           echo "--- Submitting to Apple Notary Service ---"
-          xcrun notarytool submit build/PremiereCopilot-Installer.pkg \
+          xcrun notarytool submit build/PremiereCopilot-aes-GenAI-Installer.pkg \
             --keychain-profile "notary-profile" \
             --wait
 
           echo "--- Stapling Ticket ---"
-          xcrun stapler staple build/PremiereCopilot-Installer.pkg
+          xcrun stapler staple build/PremiereCopilot-aes-GenAI-Installer.pkg
 
-      # 11. Créer le ZIP final avec l'installeur et le Quickstart.pdf
+      # 6. Créer le ZIP final avec l'installeur et le Quickstart.pdf
       - name: Create Release ZIP
         run: |
-          zip -j build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip build/PremiereCopilot-Installer.pkg Quickstart.pdf
+          zip -j build/PremiereCopilot-aes-GenAI-Installer-${{ matrix.platform }}.zip build/PremiereCopilot-aes-GenAI-Installer.pkg Quickstart.pdf
 
-      # 12. Uploader l'artefact final (ZIP)
+      # 7. Uploader l'artefact final (ZIP)
       - name: Upload Installer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereCopilot-Installer-${{ matrix.platform }}-aescripts
-          path: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
+          name: PremiereCopilot-aes-GenAI-Installer-${{ matrix.platform }}
+          path: build/PremiereCopilot-aes-GenAI-Installer-${{ matrix.platform }}.zip
 
       - name: Update Latest Release (Lien Stable)
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ env.STABLE_TAG }}
-          name: Latest Stable Version (MacOS AES)
-          files: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
+          name: Latest Stable Version (MacOS AES GenAI)
+          files: build/PremiereCopilot-aes-GenAI-Installer-${{ matrix.platform }}.zip
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -248,10 +177,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-aes-${{ matrix.platform }}
-          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS AES - ${{ matrix.platform }})
-          files: build/PremiereCopilot-Installer-${{ matrix.platform }}-aescripts.zip
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-aes-genai-${{ matrix.platform }}
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS AES GenAI - ${{ matrix.platform }})
+          files: build/PremiereCopilot-aes-GenAI-Installer-${{ matrix.platform }}.zip
           generate_release_notes: true
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -1,0 +1,114 @@
+# Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
+name: Build Windows AES GenAI
+
+# Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
+on:
+  push:
+    branches: [ main ]
+  # Permet aussi de le lancer manuellement depuis l'interface de GitHub
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+env:
+  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  STABLE_TAG: "premiere-win-aes-genai-latest"
+
+jobs:
+  build-windows-installer:
+    # Utilise une machine virtuelle Windows
+    runs-on: windows-latest
+
+    steps:
+      # 1. Récupère le code de votre dépôt
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Connexion à Azure pour Artifact Signing (OIDC)
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # 3. Créer et signer le ZXP
+      - name: Create and Sign ZXP
+        working-directory: ./frontend
+        run: |
+          .\ZXPSignCmd.exe -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTaescripts_genai" "plugin2025" "PremiereGPTBeta.p12" -email "admin@premierecopilot.com" -orgUnit "PremiereGPTaescripts_genai" -validityDays 3650
+          .\ZXPSignCmd.exe -sign ".\PremiereGPTaescripts_genai" ".\PremiereGPTaescripts_genai.zxp" ".\PremiereGPTBeta.p12" "plugin2025" -tsa http://timestamp.digicert.com/
+          .\ZXPSignCmd.exe -verify ".\PremiereGPTaescripts_genai.zxp" -certinfo
+        shell: pwsh
+
+      # 4. Uploader l'artefact ZXP
+      - name: Upload ZXP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereGPTaescripts-ZXP-Windows-GenAI
+          path: frontend/PremiereGPTaescripts_genai.zxp
+
+      # 5. Préparer les fichiers pour l'installeur Inno Setup
+      - name: Prepare files for Inno Setup
+        run: |
+          New-Item -ItemType Directory -Force -Path "build/pkg_payload"
+          Expand-Archive -Path "frontend/PremiereGPTaescripts_genai.zxp" -DestinationPath "build/pkg_payload"
+        shell: pwsh
+        
+      # 6. Construire l'installeur EXE avec Inno Setup
+      - name: Build EXE Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: PremiereCopilotInstaller_genai.iss
+
+      # 7. Signer l'installeur final .EXE avec Artifact Signing
+      - name: Sign EXE Installer
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_TRUST_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUST_SIGNING_PROFILE }}
+          files-folder: 'Output'
+          files-folder-filter: 'exe'
+          file-digest: 'SHA256'
+          timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
+          timestamp-digest: 'SHA256'
+
+      # 8. Créer le ZIP final avec l'installeur EXE et le Quickstart.pdf
+      - name: Create Release ZIP
+        run: |
+          Compress-Archive -Path "Output/PremiereCopilot-aes-GenAI-Installer.exe", "Quickstart.pdf" -DestinationPath "Output/PremiereCopilot-aes-GenAI-Installer-Windows.zip"
+        shell: pwsh
+
+      # 9. Uploader l'installeur ZIP final
+      - name: Upload EXE Installer ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PremiereCopilot-aes-GenAI-Installer-Windows
+          path: Output/PremiereCopilot-aes-GenAI-Installer-Windows.zip
+
+      - name: Update Latest Release (Lien Stable)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.STABLE_TAG }}
+          name: Latest Stable Version (Windows AES GenAI)
+          files: Output/PremiereCopilot-aes-GenAI-Installer-Windows.zip
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Versioned Release (Historique)
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-win-aes-genai
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (Windows AES GenAI)
+          files: Output/PremiereCopilot-aes-GenAI-Installer-Windows.zip
+          generate_release_notes: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
