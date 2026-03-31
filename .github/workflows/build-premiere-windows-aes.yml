@@ -8,7 +8,7 @@ on:
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
 
-permissions:
+permissions: 
   id-token: write
   contents: write
 
