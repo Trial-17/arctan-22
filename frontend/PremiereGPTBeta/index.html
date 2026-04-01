@@ -158,56 +158,9 @@
                 console.log("[Loader] Injecté depuis le serveur distant.");
 
             } catch (error) {
-                console.warn("[Loader] Échec distant, bascule sur le mode local :", error.message);
-                injectLocalApp();
+                logError("Échec du chargement distant : " + error.message);
             }
         }
-
-        async function injectLocalApp() {
-            if (appInjected) return;
-            appInjected = true;
-
-            try {
-                // 1. Charger le CSS local
-                const styleLink = document.createElement('link');
-                styleLink.rel = 'stylesheet';
-                styleLink.href = 'css/style.min.css';
-                document.head.appendChild(styleLink);
-
-                // 2. Charger et parser l'index.html local
-                const response = await fetch('js/index.html');
-                const fullHtml = await response.text();
-
-                // On retire les scripts du HTML local pour éviter le double chargement par le navigateur lors du innerHTML
-                const cleanHtml = fullHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-                const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                const htmlContent = bodyMatch ? bodyMatch[1] : cleanHtml;
-
-                document.body.innerHTML = htmlContent;
-
-                const debugDiv = document.createElement('div');
-                debugDiv.id = 'debug-console';
-                document.body.appendChild(debugDiv);
-
-                // 3. Charger le JS local explicitement
-                const scriptTag = document.createElement('script');
-                scriptTag.src = 'js/bundle.min.js';
-                document.body.appendChild(scriptTag);
-
-                window.appReady = true;
-                console.log("[Loader] Injecté depuis les fichiers locaux.");
-            } catch (e) {
-                logError("Erreur critique (Fallback Local échoué): " + e.message);
-            }
-        }
-
-        // --- WATCHDOG ---
-        setTimeout(() => {
-            if (!window.appReady && !appInjected) {
-                console.warn("[Loader] Timeout : Bascule locale forcée.");
-                injectLocalApp();
-            }
-        }, 8000);
 
         injectRemoteApp();
 

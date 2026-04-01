@@ -3,8 +3,8 @@ name: Build Windows AES
 
 # Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
-  push:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
   # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
 
