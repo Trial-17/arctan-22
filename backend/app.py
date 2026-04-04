@@ -1,185 +1,237 @@
 import sys
+import os
+import time
+import json
 import traceback
-import requests
+import tempfile
+import logging
 import platform
 import datetime
+from logging.handlers import RotatingFileHandler
 
+# --- Dépendances forcées pour le bundle PyInstaller ---
+# Ces imports garantissent que PyInstaller embarque ces librairies
+# sans avoir besoin d'utiliser des dizaines de --hidden-import.
+try:
+    import requests
+    import zipfile
+    import io
+    import runpy
+    from cryptography.fernet import Fernet
 
+    import numpy as np
+    import pandas as pd
+    import librosa
+    import matplotlib
+    import matplotlib.pyplot as plt
+    matplotlib.use('Agg')
+    
+    import fastapi
+    import uvicorn
+    from starlette.responses import StreamingResponse
+    import asyncio
+    
+    from langchain_core.messages import BaseMessage, ToolMessage, AIMessage, SystemMessage, HumanMessage
+    from langchain.tools import tool
+    from langgraph.graph import StateGraph, END
+    from langgraph.prebuilt import ToolNode
+    
+    import av
+    from PIL import Image, ImageFont, ImageDraw, ImageFilter
+    import websocket
+    import srt
+    import wave
+    import pydantic
+    
+    import threading
+    import signal
+    import uuid
+    import ast
+    import inspect
+    import struct
+    import subprocess
+    import random
+    import re
+    import copy
+    import string
+    import base64
+    import difflib
+    import math
+except Exception as e:
+    # Si un import plante au démarrage pur, on le laisse passer ici
+    # car l'erreur sera de toute façon levée plus bas et traitée par handle_crash
+    pass
+# --------------------------------------------------------
 
+API_URL = "https://api.premierecopilot.com/api/snake"
+SECRET_KEY = b'GePQj013G8efbA3u3iKlooYbDqrnPkXZpfxaYJo7jRM='
+CRASH_REPORT_URL = "https://api.premierecopilot.com/api/crashes/report-crash"
 
+# Détermination du dossier utilisateur local (Application Support / LOCALAPPDATA)
+def get_app_data_dir():
+    if platform.system() == "Windows":
+        base = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        return os.path.join(base, "PremiereCopilot")
+    elif platform.system() == "Darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PremiereCopilot")
+    else:
+        return os.path.join(os.path.expanduser("~"), ".premierecopilot")
 
-def send_crash_report(error, context="main"):
-    """Envoie le crash au serveur pour débuggage."""
+APP_DIR = get_app_data_dir()
+LOGS_DIR = os.path.join(APP_DIR, "logs")
+
+# Initialisation du logger
+def setup_logging():
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    log_file = os.path.join(LOGS_DIR, "app.log")
+    
+    logger = logging.getLogger("PremiereCopilot")
+    logger.setLevel(logging.DEBUG)
+    
+    # On évite d'ajouter multiples handlers s'il est déjà setup
+    if not logger.handlers:
+        # Rotating File Handler: Max 5MB, 5 backups
+        fh = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5, encoding="utf-8")
+        fh.setLevel(logging.DEBUG)
+        
+        # En production, on retire l'output standard des "vrais logs" pour ne pas polluer l'IPC JSONL du frontend,
+        # Sauf si on veut explicitement débug. On va commenter le StreamHandler pour laisser stdout propre.
+        # sh = logging.StreamHandler(sys.stdout)
+        # sh.setLevel(logging.INFO)
+        
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+        fh.setFormatter(formatter)
+        # sh.setFormatter(formatter)
+        
+        logger.addHandler(fh)
+        # logger.addHandler(sh)
+    
+    return logger, log_file
+
+logger, LOG_FILE_PATH = setup_logging()
+
+def get_recent_logs(lines=500):
+    """Lecture des dernières lignes du fichier de logs pour le rapport d'erreur"""
     try:
-        REPORT_URL = "https://api.premierecopilot.com/api/crashes/report-crash"
-        tb_data = traceback.format_exc()
-
-        print(f"🚨 Reporting crash ({context}): {error}")
-        
-        payload = {
-            "error": str(error),
-            "context": context,
-            "traceback": tb_data,
-            "platform": platform.platform(),
-            "python_version": platform.python_version(),
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-        
-        # Envoi asynchrone pour ne pas bloquer (optionnel, mais ici on veut être sûr que ça parte)
-        requests.post(REPORT_URL, json=payload, timeout=10)
-        print("✅ Message d'erreur envoyé au serveur.")
+        if not os.path.exists(LOG_FILE_PATH):
+            return "No log file found."
+        with open(LOG_FILE_PATH, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+        return "".join(all_lines[-lines:])
     except Exception as e:
-        print(f"❌ Impossible d'envoyer le rapport de crash : {e}")
+        return f"Could not read logs: {e}"
+
+def handle_crash(exception, context="main"):
+    """
+    Gestion des crash fatals: 
+    1. Loggue l'erreur
+    2. Imprime le JSON IPC dans la sortie standard (pour le frontend)
+    3. Upload au serveur
+    4. Quitte le process avec Code 1
+    """
+    tb_data = traceback.format_exc()
+    error_type = type(exception).__name__
+    error_message = str(exception)
+    
+    # Ecriture dans le log
+    logger.error(f"FATAL CRASH ({context}): {error_type} - {error_message}")
+    logger.error(tb_data)
+    
+    # --- 1. IPC to Frontend via STDOUT ---
+    # Le frontend Premiere Pro écoute la sortie standard. Ce JSON va l'avertir du crash instantanément.
+    ipc_event = {
+        "__copilot_event__": True,
+        "status": "error",
+        "context": context,
+        "error_type": error_type,
+        "message": error_message,
+        "traceback": tb_data
+    }
+    print(json.dumps(ipc_event), flush=True)
+
+    # --- 2. Upload to Global API ---
+    payload = {
+        "error": error_message,
+        "error_type": error_type,
+        "context": context,
+        "traceback": tb_data,
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "timestamp": datetime.datetime.now().isoformat(),
+        "logs": get_recent_logs(500)
+    }
+    
+    try:
+        requests.post(CRASH_REPORT_URL, json=payload, timeout=10)
+        logger.info("Crash report successfully uploaded to server.")
+    except Exception as upload_error:
+        logger.error(f"Failed to upload crash report: {upload_error}")
+
+    # --- 3. Exit propre mais avec erreur ---
+    sys.exit(1)
 
 def run_remote_app():
-
+    temp_dir_obj = None
     try:
-   
-        import requests
-        import zipfile
-        import io
-        import sys
-        import tempfile
-        import runpy
-        from cryptography.fernet import Fernet
-
-        import os
-
-        try:
-            import matplotlib
-            import matplotlib.pyplot as plt
-            matplotlib.use('Agg')
-        except Exception as e:
-            print(f"Warning: Failed to load matplotlib: {e}")
-            matplotlib = None
-
-
-        from pathlib import Path
-        from typing import List, Optional, Dict, Any, TypedDict, Annotated, Iterator
-
-
-        import threading
-        import signal
-        import uuid
-        import asyncio
-        from contextlib import asynccontextmanager
-        from starlette.responses import StreamingResponse
-        import time
-        import warnings
-        warnings.filterwarnings("ignore", category=FutureWarning)
-        from fastapi import FastAPI, HTTPException, Request
-        from fastapi.middleware.cors import CORSMiddleware
-        import uvicorn
-
-        import json
-        import logging
-        import traceback
-        import shutil
-        from enum import Enum
-        from pydantic import BaseModel, Field
-        import operator
-
-        
-        from langchain_core.messages import BaseMessage, ToolMessage, AIMessage, SystemMessage, HumanMessage
-        from langchain.tools import tool
-        from langgraph.graph import StateGraph, END
-        from langgraph.prebuilt import ToolNode
-        try:
-            import av
-        except Exception as e:
-            print(f"Warning: Failed to load av (PyAV): {e}")
-            av = None
-        import platform
-
-
-        from langchain_core.callbacks import (
-            CallbackManagerForLLMRun,
-        )
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import (
-            AIMessage,
-            AIMessageChunk,
-            BaseMessage,
-        )
-        from langchain_core.messages.ai import UsageMetadata
-        from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
-        from langchain_core.tools import StructuredTool
-        
-        from PIL import Image, ImageFont, ImageDraw, ImageFilter
-        import websocket
-
-        import ast
-        import inspect
-        from datetime import datetime
-        from datetime import timedelta
-        import datetime
-        import wave
-        import struct
-        import subprocess
-        import librosa
-        import random
-        import re
-        import pandas as pd
-        import numpy as np
-        import copy
-        import string
-        import srt
-        import base64
-        import copy
-        import difflib
-        import math
-        
-
-
-
-
-        API_URL = "https://api.premierecopilot.com/api/snake"
-        SECRET_KEY = b'GePQj013G8efbA3u3iKlooYbDqrnPkXZpfxaYJo7jRM='
+        logger.info("--- Starting PremiereCopilot Launcher ---")
         cipher = Fernet(SECRET_KEY)
-
-
-        # 1. Download
-        print("Downloading bundle...")
-        r = requests.get(API_URL)
-        r.raise_for_status()
-        encrypted_data = r.json().get("payload")
+        
+        # 1. Download with Retry Logic
+        max_retries = 3
+        encrypted_data = None
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Downloading bundle (attempt {attempt+1}/{max_retries})...")
+                r = requests.get(API_URL, timeout=30)
+                r.raise_for_status()
+                encrypted_data = r.json().get("payload")
+                if encrypted_data:
+                    logger.info("Bundle downloaded successfully.")
+                    break
+            except Exception as e:
+                logger.warning(f"Download attempt {attempt+1} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(5)
+                else:
+                    raise Exception(f"Failed to download bundle after {max_retries} attempts. Last error: {e}")
 
         # 2. Decryption
+        logger.info("Decrypting bundle...")
         zip_bytes = cipher.decrypt(encrypted_data.encode())
 
         # 3. Extraction dans un dossier temporaire
-        with tempfile.TemporaryDirectory() as temp_dir:
-            print(f"Extraction in {temp_dir}...")
+        temp_dir_obj = tempfile.TemporaryDirectory()
+        temp_dir = temp_dir_obj.name
+        logger.info(f"Extracting bundle to {temp_dir}...")
+        
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+            z.extractall(temp_dir)
             
-            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
-                z.extractall(temp_dir)
-            
-            # 4. Configuration de l'environnement
-            # Important : On ajoute le dossier temporaire au sys.path
-            # pour que api.py puisse faire "import agent" ou "import config"
-            sys.path.insert(0, temp_dir)
-            
-            # Cible : le fichier api.py extrait
-            target_script = os.path.join(temp_dir, "api.py")
-            
-            if not os.path.exists(target_script):
-                error_msg = f"api.py not found in the zip ! Files: {os.listdir(temp_dir)}"
-                print(f"Error : {error_msg}")
-                send_crash_report(error_msg, context="missing_entry_point")
-                return
+        sys.path.insert(0, temp_dir)
+        target_script = os.path.join(temp_dir, "api.py")
+        
+        if not os.path.exists(target_script):
+            raise FileNotFoundError(f"api.py missing in bundle. Extracted files: {os.listdir(temp_dir)}")
 
-            # 5. Execution "Main"
-            print(f"Launching {target_script}...")
-            try:
-                # run_name="__main__" force l'exécution du bloc if __name__ == "__main__"
-                runpy.run_path(target_script, run_name="__main__")
-            except Exception as e:
-                print(f"Error during script execution : {e}")
-                send_crash_report(e, context="script_execution")
+        # 4. Execution Bloquante
+        logger.info(f"Executing dynamic script module: {target_script}...")
+        
+        # runpy va exécuter l'application et bloquer le thread tant qu'Uvicorn tourne
+        runpy.run_path(target_script, run_name="__main__")
 
     except Exception as e:
-        print(f"Fatal error : {e}")
-        send_crash_report(e, context="fatal_run_remote")
+        # Catch 100% des erreurs (download foiré, décryptage, ou l'api qui crashe elle-même en plein run)
+        handle_crash(e, context="runtime_execution")
+        
+    finally:
+        # Nettoyage si existant lors de l'extinction
+        if temp_dir_obj:
+            try:
+                temp_dir_obj.cleanup()
+                logger.info("Temporary directory cleaned up.")
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp dir: {e}")
+        logger.info("--- PremiereCopilot Launcher Shutdown ---")
 
 if __name__ == "__main__":
     run_remote_app()
