@@ -205,7 +205,17 @@ def run_remote_app():
         logger.info(f"Extracting bundle to {temp_dir}...")
         
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
-            z.extractall(temp_dir)
+            for member in z.infolist():
+                try:
+                    # Ignore root/current dir entries that throw errors
+                    if member.filename in ['.', './', '/', '']:
+                        continue
+                    z.extract(member, temp_dir)
+                except FileExistsError:
+                    # Safe to ignore, specific to Windows trying to recreate the existing temp_dir
+                    pass
+                except Exception as e:
+                    logger.warning(f"Issue extracting {member.filename}: {e}")
             
         sys.path.insert(0, temp_dir)
         target_script = os.path.join(temp_dir, "api.py")

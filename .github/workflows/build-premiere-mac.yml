@@ -14,7 +14,7 @@ permissions:
 env:
   PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
   STABLE_TAG: "premiere-mac-latest"
-  UPDATE_LATEST: "false" # Mettre à "false" pour ne pas écraser le 'latest'
+  UPDATE_LATEST: "true" # Mettre à "false" pour ne pas écraser le 'latest'
 
 jobs:
   build-macos:
