@@ -1,11 +1,9 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
 name: Build Windows Installer
 
-# Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
   # push:
   #   branches: [ main ]
-  # Permet aussi de le lancer manuellement depuis l'interface de GitHub 
   workflow_dispatch:
 
 permissions:
@@ -19,30 +17,13 @@ env:
 
 jobs:
   build-windows-installer:
-    # Utilise une machine virtuelle Windows
     runs-on: windows-latest
 
     steps:
-      # 1. Récupère le code de votre dépôt
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configure l'environnement Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      # 3. Crée l'environnement virtuel et installe les dépendances
-      - name: Install Python dependencies
-        run: |
-          python -m venv venv
-          .\venv\Scripts\activate
-          pip install --upgrade pip
-          pip install -r backend\requirements.txt
-        shell: pwsh
-
-      # 3.1. Connexion à Azure pour Artifact Signing (OIDC)
+      # Connexion à Azure pour Artifact Signing (OIDC)
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -51,35 +32,7 @@ jobs:
       #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           allow-no-subscriptions: true
 
-      # 4. Construire l'API avec PyInstaller
-      - name: Build API with PyInstaller
-        run: |
-          .\venv\Scripts\activate
-          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend\app.py
-        shell: pwsh
-
-      # 4.1. Signer les binaires de l'API avec Artifact Signing
-      - name: Sign API Binaries
-        uses: azure/artifact-signing-action@v1
-        with:
-          endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ secrets.AZURE_TRUST_SIGNING_ACCOUNT }}
-          certificate-profile-name: ${{ secrets.AZURE_TRUST_SIGNING_PROFILE }}
-          files-folder: 'dist/PremiereCopilot'
-          files-folder-filter: 'exe,dll,pyd'
-          files-folder-recurse: true
-          file-digest: 'SHA256'
-          timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
-          timestamp-digest: 'SHA256'
-
-      # 5. Préparer les fichiers pour le ZXP
-      - name: Prepare files for ZXP
-        run: |
-          New-Item -ItemType Directory -Force -Path "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI"
-          Copy-Item -Path "dist\PremiereCopilot\*" -Destination "frontend\PremiereGPTBeta\js\libs\PremiereCopilotAPI" -Recurse
-        shell: pwsh
-
-      # 6. Créer et signer le ZXP
+      # Créer et signer le ZXP
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
@@ -88,28 +41,27 @@ jobs:
           .\ZXPSignCmd.exe -verify ".\PremiereGPTBeta.zxp" -certinfo
         shell: pwsh
 
-      # 6.1. Uploader l'artefact ZXP
+      # Uploader l'artefact ZXP
       - name: Upload ZXP Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PremiereGPTBeta-ZXP-Windows
           path: frontend/PremiereGPTBeta.zxp
 
-      # 7. Préparer les fichiers pour l'installeur Inno Setup
+      # Préparer les fichiers pour l'installeur Inno Setup
       - name: Prepare files for Inno Setup
         run: |
           New-Item -ItemType Directory -Force -Path "build/pkg_payload"
           Expand-Archive -Path "frontend/PremiereGPTBeta.zxp" -DestinationPath "build/pkg_payload"
         shell: pwsh
-        
-      # 8. Construire l'installeur EXE avec Inno Setup
+
+      # Construire l'installeur EXE avec Inno Setup
       - name: Build EXE Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
-          # Assurez-vous que ce chemin vers votre script Inno Setup est correct
           path: PremiereCopilotInstaller.iss
 
-      # 8.1. Signer l'installeur final .EXE avec Artifact Signing
+      # Signer l'installeur final .EXE avec Artifact Signing
       - name: Sign EXE Installer
         uses: azure/artifact-signing-action@v1
         with:
@@ -122,12 +74,10 @@ jobs:
           timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
           timestamp-digest: 'SHA256'
 
-      # 9. Uploader l'installeur EXE final comme un "artefact"
       - name: Upload EXE Installer
         uses: actions/upload-artifact@v4
         with:
           name: PremiereCopilot-Installer-Windows
-          # Inno Setup place le résultat dans un sous-dossier "Output" par défaut
           path: Output/PremiereCopilot-Setup.exe
 
       - name: Update Latest Release (Lien Stable)

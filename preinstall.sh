@@ -8,13 +8,6 @@ FOLDER_PATH_2="/Library/Application Support/Adobe/CEP/extensions/PremiereGPTBeta
 
 echo "Lancement du script de pré-installation..."
 
-# --- Arrêt forcé de l'API précédente (port 8000) ---
-echo "🔌 Arrêt forcé des processus sur le port 8000..."
-# Force l'arrêt de tous les processus utilisant le port 8000
-# || true empêche l'échec du script si aucun processus n'est trouvé
-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-echo "   ✅ Nettoyage du port 8000 terminé."
-
 # --- Traitement du premier dossier ---
 # L'option -d vérifie si le chemin existe ET est un dossier.
 if [ -d "$FOLDER_PATH_1" ]; then

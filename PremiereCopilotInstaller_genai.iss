@@ -1,22 +1,10 @@
 [Code]
-// Fonction pour arrêter les processus sur le port 8000 (Si jamais il y en a un vieux)
-procedure KillProcessOnPort8000();
-var
-  ResultCode: Integer;
-begin
-  Exec('cmd.exe', 
-    '/C "for /f "tokens=5" %a in (''netstat -ano ^| findstr :8000'') do taskkill /F /PID %a 2>nul"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   OldDir1, OldDir2, OldDir3, OldDir4: String;
 begin
   if CurStep = ssInstall then
   begin
-    KillProcessOnPort8000();
-    
     OldDir1 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTBeta');
     OldDir2 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereCopilot');
     OldDir3 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTaescripts');
@@ -30,14 +18,6 @@ begin
       DelTree(OldDir3, True, True, True);
     if DirExists(OldDir4) then
       DelTree(OldDir4, True, True, True);
-  end;
-end;
-
-procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
-begin
-  if CurUninstallStep = usUninstall then
-  begin
-    KillProcessOnPort8000();
   end;
 end;
 

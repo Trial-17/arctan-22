@@ -1,25 +1,10 @@
 [Code]
-// Fonction pour arrêter les processus sur le port 8000
-procedure KillProcessOnPort8000();
-var
-  ResultCode: Integer;
-begin
-  // Commande CMD brutale : trouve tous les PIDs sur le port 8000 et les tue
-  // /F = Force, /FI = Filter pour cibler le port 8000
-  Exec('cmd.exe', 
-    '/C "for /f "tokens=5" %a in (''netstat -ano ^| findstr :8000'') do taskkill /F /PID %a 2>nul"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   OldDir1, OldDir2, OldDir3: String;
 begin
   if CurStep = ssInstall then
   begin
-    // Arrêt forcé des processus sur le port 8000
-    KillProcessOnPort8000();
-    
     OldDir1 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTBeta');
     OldDir2 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereCopilot');
     OldDir3 := ExpandConstant('{commoncf}\Adobe\CEP\extensions\PremiereGPTaescripts');
@@ -30,14 +15,6 @@ begin
       DelTree(OldDir2, True, True, True);
     if DirExists(OldDir3) then
       DelTree(OldDir3, True, True, True);
-  end;
-end;
-
-procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
-begin
-  if CurUninstallStep = usUninstall then
-  begin
-    KillProcessOnPort8000();
   end;
 end;
 
@@ -77,6 +54,3 @@ Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\sfx"
 Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\temp"
 Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\thumbnails"
 Name: "{userdocs}\Adobe\Premiere Pro\Premiere Copilot\transcription_analysis"
-
-[Run]
-Filename: "{app}\js\libs\PremiereCopilotAPI\PremiereCopilot.exe"; Description: "Lancer le service d'Arrière-Plan (API)"; Flags: nowait postinstall runhidden skipifsilent

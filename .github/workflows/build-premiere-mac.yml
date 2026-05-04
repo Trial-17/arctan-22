@@ -1,11 +1,9 @@
 # Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
 name: Build macOS Installers
 
-# Déclencheur : ce workflow s'exécute à chaque "push" sur la branche "main"
 on:
   # push:
   #   branches: [ main ]
-  # Permet aussi de le lancer manuellement depuis l'interface de GitHub
   workflow_dispatch:
 
 permissions:
@@ -18,7 +16,6 @@ env:
 
 jobs:
   build-macos:
-    # Stratégie de Matrice : exécute les mêmes étapes sur les deux architectures Mac
     strategy:
       matrix:
         include:
@@ -27,124 +24,37 @@ jobs:
           - os: macos-15
             platform: Mac-Intel
 
-    # Utilise la machine virtuelle définie dans la matrice
     runs-on: ${{ matrix.os }}
 
     steps:
-      # 1. Récupère le code de votre dépôt
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Importer et vérifier les certificats Apple (Fail Fast)
-      - name: Import and Verify Apple Certificates
+      - name: Import and Verify Apple Installer Certificate
         env:
-          APP_CERT_P12: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12 }}
-          APP_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
           INSTALLER_CERT_P12: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_P12 }}
           INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
         run: |
-          # Importation des certificats séparés
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
-          echo "$APP_CERT_P12" | base64 --decode > app_cert.p12
-          security import app_cert.p12 -k build.keychain -P "$APP_CERT_PASSWORD" -A -T /usr/bin/codesign
           echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
           security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A -T /usr/bin/productsign -T /usr/bin/pkgbuild
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
-          # Vérification que les deux identités sont bien présentes
           echo "--- Available Identities ---"
           security find-identity -v build.keychain
           echo "------------------------------------"
-          
-          APP_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
-          if [ -z "$APP_IDENTITY" ]; then
-            echo "::error::Developer ID Application certificate not found."
-            exit 1
-          fi
-          
-          # Correction : On cherche dans toutes les identités
+
           INSTALLER_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer")
           if [ -z "$INSTALLER_IDENTITY" ]; then
             echo "::error::Developer ID Installer certificate not found."
             exit 1
           fi
-          
-          echo "✅ Both Application and Installer certificates found in the keychain."
 
-      # 3. Configure l'environnement Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+          echo "✅ Installer certificate found in the keychain."
 
-      # 4. Crée l'environnement virtuel et installe les dépendances
-      - name: Install Python dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r backend/requirements.txt
-        shell: bash
-
-      # 5. Construire l'API avec PyInstaller
-      - name: Build API with PyInstaller
-        run: |
-          source venv/bin/activate
-          python -m PyInstaller --noconfirm --clean --name PremiereCopilot --console --hidden-import=scipy._cyutility backend/app.py
-        shell: bash
-
-      # 6. Signer correctement tout le bundle PyInstaller
-      # - name: Sign PyInstaller Bundle (Robust Method)
-      #   run: |
-      #     SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          
-      #     echo "Using Application signing identity: $SIGNING_IDENTITY"
-
-      #     # 1. Signe d'abord toutes les librairies et binaires internes avec les droits
-      #     echo "--- Signing all internal binaries and libraries ---"
-      #     find dist/PremiereCopilot/_internal -type f -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist {} \;
-
-      #     # 2. Signe l'exécutable principal en dernier avec les droits
-      #     echo "--- Signing the main executable ---"
-      #     codesign --force --deep --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist dist/PremiereCopilot
-
-      #     # 3. Vérification finale et stricte de la signature
-      #     echo "--- Verifying final bundle signature ---"
-          # codesign --verify --deep --strict --verbose=4 dist/PremiereCopilot
-
-      # 6. Signer correctement tout le bundle PyInstaller (Méthode Manuelle Stricte)
-      - name: Sign PyInstaller Bundle (Correct Method)
-        run: |
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          echo "Using Identity: $SIGNING_IDENTITY"
-
-          # 1. Nettoyer les fichiers gênants (souvent créés par PyInstaller)
-          find dist/PremiereCopilot -name "*.DS_Store" -delete
-
-          # 2. Signer les frameworks et dylibs internes (Inside-Out)
-          # On signe tout ce qui est .so, .dylib, ou binaire dans _internal
-          echo "--- Signing internal libs ---"
-          find dist/PremiereCopilot/_internal -type f \( -name "*.so" -o -name "*.dylib" -o -perm +111 \) -exec codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp {} \;
-
-          # 3. Signer l'exécutable principal (Le fichier binaire, pas le dossier)
-          echo "--- Signing main executable ---"
-          # Attention : PyInstaller crée un dossier "PremiereCopilot" ET un binaire "PremiereCopilot" dedans
-          codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp --entitlements entitlements.plist "dist/PremiereCopilot/PremiereCopilot"
-
-          # 4. Vérification
-          echo "--- Verifying ---"
-          codesign --verify --verbose "dist/PremiereCopilot/PremiereCopilot"
-
-      # 7. Préparer les fichiers pour le ZXP
-      - name: Prepare files for ZXP
-        run: |
-          mkdir -p frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI
-          # Ajoute "/." à la source pour copier le contenu du dossier, et non le dossier lui-même
-          cp -R dist/PremiereCopilot/. frontend/PremiereGPTBeta/js/libs/PremiereCopilotAPI/
-
-      # 8. Créer et signer le ZXP (robuste, avec certificat auto-signé)
+      # Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
@@ -173,8 +83,6 @@ jobs:
           echo "--- Verifying ZXP signature ---"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
 
-
-      # 9. Construire et signer l'installeur PKG
       - name: Build and Sign PKG Installer
         run: |
           mkdir -p build/pkg_root/PremiereGPTBeta
@@ -183,14 +91,13 @@ jobs:
           chmod +x preinstall.sh postinstall.sh
           cp preinstall.sh build/scripts/preinstall
           cp postinstall.sh build/scripts/postinstall
-          
+
           echo "--- Available identities in build.keychain ---"
           security find-identity -v build.keychain
           echo "---------------------------------------------"
 
-          # Correction : On cherche dans toutes les identités (-v)
           SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-          
+
           if [ -z "$SIGNING_IDENTITY" ]; then
             echo "::error::Developer ID Installer identity not found."
             exit 1
@@ -204,11 +111,9 @@ jobs:
                    --version 1.0 \
                    --sign "$SIGNING_IDENTITY" \
                    build/PremiereCopilot-Installer.pkg
-      
-      # 10. Notariser et agrafer l'installeur PKG (Native notarytool)
+
       - name: Notarize and Staple PKG
         run: |
-          # Création du profil temporaire pour notarytool
           xcrun notarytool store-credentials "notary-profile" \
             --apple-id "${{ secrets.APPLE_ID }}" \
             --team-id "${{ secrets.APPLE_TEAM_ID }}" \
@@ -222,7 +127,6 @@ jobs:
           echo "--- Stapling Ticket ---"
           xcrun stapler staple build/PremiereCopilot-Installer.pkg
 
-      # 11. Uploader l'artefact final
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
