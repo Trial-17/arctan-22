@@ -2,15 +2,15 @@
 name: Build macOS Installers
 
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 env:
-  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  PRODUCT_VERSION: "3.0" # Changez ici pour passer à la v2.0, etc.
   STABLE_TAG: "premiere-mac-latest"
   UPDATE_LATEST: "true" # Mettre à "false" pour ne pas écraser le 'latest'
 
