@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Davinci Copilot Loader</title>
+    <title>davinciClaude Loader</title>
 
     <!-- Inclusion des fonctions basiques portées de JSX à Electron -->
     <script src="./library_davinci.js"></script>
@@ -96,7 +96,8 @@
 
     <script>
         // On utilise un nom unique pour éviter le conflit avec le script distant
-        const LOADER_URL = "https://api.premierecopilot.com/api/snake3";
+        // Endpoint bundle DÉDIÉ DaVinci (davinciClaude), distinct de Premiere (/snake3).
+        const LOADER_URL = "https://api.premierecopilot.com/api/snake_davinci";
 
         function logError(msg) {
             const consoleDiv = document.getElementById('debug-console');

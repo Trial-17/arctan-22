@@ -1,7 +1,10 @@
 #!/bin/bash
 
-echo "📁 Création de la structure API DaVinciGPT..."
+echo "📁 Création de la structure API davinciClaude..."
 
+# NB : dossier de données conservé en "DaVinciGPT" — le bundle servi par l'API
+# écrit en dur dans ~/Documents/DaVinciGPT (getDocumentsBase). Ne pas renommer
+# tant que le bundle DaVinci dédié n'a pas changé ce chemin.
 BASE_PATH="$HOME/Documents/DaVinciGPT"
 mkdir -p "$BASE_PATH"
 

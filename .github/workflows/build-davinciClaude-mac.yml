@@ -1,9 +1,9 @@
 # Nom du workflow
-name: Build DaVinci macOS Installers
+name: Build davinciClaude macOS Installers
 
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 env:
   PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
-  STABLE_TAG: "davinci-mac-latest"
+  STABLE_TAG: "davinciclaude-mac-latest"
 
 jobs:
   build-macos:
@@ -54,13 +54,13 @@ jobs:
 
       - name: Build and Sign PKG Installer
         run: |
-          mkdir -p build/pkg_root/DavinciGPT
-          cp -R frontend/DavinciGPT/. build/pkg_root/DavinciGPT/
+          mkdir -p build/pkg_root/davinciClaude
+          cp -R frontend/davinciClaude/. build/pkg_root/davinciClaude/
 
           mkdir -p build/scripts
-          chmod +x preinstall_davinci.sh postinstall_davinci.sh
-          cp preinstall_davinci.sh build/scripts/preinstall
-          cp postinstall_davinci.sh build/scripts/postinstall
+          chmod +x preinstall_davinciClaude.sh postinstall_davinciClaude.sh
+          cp preinstall_davinciClaude.sh build/scripts/preinstall
+          cp postinstall_davinciClaude.sh build/scripts/postinstall
 
           SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
 
@@ -73,10 +73,10 @@ jobs:
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins" \
                    --scripts build/scripts \
-                   --identifier com.trial17.davincigpt \
+                   --identifier com.trial17.davinciclaude \
                    --version 1.0 \
                    --sign "$SIGNING_IDENTITY" \
-                   build/DavinciCopilot-Installer.pkg
+                   build/davinciClaude-Installer.pkg
 
       - name: Notarize and Staple PKG
         run: |
@@ -86,29 +86,29 @@ jobs:
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
 
           echo "--- Submitting to Apple Notary Service ---"
-          xcrun notarytool submit build/DavinciCopilot-Installer.pkg \
+          xcrun notarytool submit build/davinciClaude-Installer.pkg \
             --keychain-profile "notary-profile" \
             --wait
 
           echo "--- Stapling Ticket ---"
-          xcrun stapler staple build/DavinciCopilot-Installer.pkg
+          xcrun stapler staple build/davinciClaude-Installer.pkg
 
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
-          name: DavinciCopilot-Installer-${{ matrix.platform }}
-          path: build/DavinciCopilot-Installer.pkg
+          name: davinciClaude-Installer-${{ matrix.platform }}
+          path: build/davinciClaude-Installer.pkg
 
       - name: Rename PKG for Release
-        run: mv build/DavinciCopilot-Installer.pkg build/DavinciCopilot-Installer-${{ matrix.platform }}.pkg
+        run: mv build/davinciClaude-Installer.pkg build/davinciClaude-Installer-${{ matrix.platform }}.pkg
 
       - name: Update Latest Release (Lien Stable)
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ env.STABLE_TAG }}
-          name: Latest Stable Version (MacOS)
-          files: build/DavinciCopilot-Installer-${{ matrix.platform }}.pkg
+          name: davinciClaude — Latest Stable (macOS)
+          files: build/davinciClaude-Installer-${{ matrix.platform }}.pkg
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,9 +117,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-${{ matrix.platform }}
-          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS - ${{ matrix.platform }})
-          files: build/DavinciCopilot-Installer-${{ matrix.platform }}.pkg
+          tag_name: davinciclaude-v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-${{ matrix.platform }}
+          name: davinciClaude v${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (macOS - ${{ matrix.platform }})
+          files: build/davinciClaude-Installer-${{ matrix.platform }}.pkg
           generate_release_notes: true
           make_latest: false
         env:

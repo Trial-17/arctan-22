@@ -1,0 +1,9 @@
+{
+  "name": "davinciClaude",
+  "version": "1.0.0",
+  "description": "davinciClaude — Workflow Integration Plugin for DaVinci Resolve",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  }
+}

@@ -1,9 +1,9 @@
 # Nom du workflow
-name: Build DaVinci Windows Installer
+name: Build davinciClaude Windows Installer
 
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
 
 env:
   PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
-  STABLE_TAG: "davinci-win-latest"
+  STABLE_TAG: "davinciclaude-win-latest"
 
 jobs:
   build-windows-installer:
@@ -34,13 +34,13 @@ jobs:
       - name: Prepare files for Inno Setup
         run: |
           New-Item -ItemType Directory -Force -Path "build\pkg_payload"
-          Copy-Item -Path "frontend\DavinciGPT\*" -Destination "build\pkg_payload" -Recurse
+          Copy-Item -Path "frontend\davinciClaude\*" -Destination "build\pkg_payload" -Recurse
         shell: pwsh
 
       - name: Build EXE Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
-          path: DavinciCopilotInstaller.iss
+          path: davinciClaudeInstaller.iss
 
       # Signer l'installeur final .EXE avec Artifact Signing
       - name: Sign EXE Installer
@@ -58,16 +58,16 @@ jobs:
       - name: Upload EXE Installer
         uses: actions/upload-artifact@v4
         with:
-          name: DavinciCopilot-Installer-Windows
-          path: Output/DavinciCopilot-Setup.exe
+          name: davinciClaude-Installer-Windows
+          path: Output/davinciClaude-Setup.exe
 
       - name: Update Latest Release (Lien Stable)
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ env.STABLE_TAG }}
-          name: Latest Stable Version (Windows)
-          files: Output/DavinciCopilot-Setup.exe
+          name: davinciClaude — Latest Stable (Windows)
+          files: Output/davinciClaude-Setup.exe
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,9 +76,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-win
-          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (Windows)
-          files: Output/DavinciCopilot-Setup.exe
+          tag_name: davinciclaude-v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-win
+          name: davinciClaude v${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (Windows)
+          files: Output/davinciClaude-Setup.exe
           generate_release_notes: true
           make_latest: false
         env:
