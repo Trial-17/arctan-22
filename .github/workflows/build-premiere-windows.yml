@@ -25,6 +25,8 @@ jobs:
 
       # Connexion à Azure pour Artifact Signing (OIDC)
       - name: Azure Login
+        # Signature Azure liée à main (identité fédérée) : les branches de test sortent un .exe non signé
+        if: github.ref == 'refs/heads/main'
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -64,6 +66,8 @@ jobs:
 
       # Signer l'installeur final .EXE avec Artifact Signing
       - name: Sign EXE Installer
+        # Signature Azure liée à main (identité fédérée) : les branches de test sortent un .exe non signé
+        if: github.ref == 'refs/heads/main'
         uses: azure/artifact-signing-action@v1
         with:
           endpoint: ${{ secrets.AZURE_TRUST_SIGNING_ENDPOINT }}

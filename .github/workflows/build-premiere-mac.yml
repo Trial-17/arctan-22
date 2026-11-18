@@ -83,6 +83,8 @@ jobs:
           pkgutil --check-signature build/PremiereCopilot-Installer-Mac.pkg
 
       - name: Notarize and Staple PKG
+        # Bloquant sur main ; sur une branche de test le pkg reste signé mais peut être non notarisé
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
         run: |
           xcrun notarytool store-credentials "notary-profile" \
             --apple-id "${{ secrets.APPLE_ID }}" \
