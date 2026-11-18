@@ -1,4 +1,5 @@
-# Nom du workflow
+# Installeur macOS DavinciClaude
+# Un seul pkg pour Apple Silicon et Intel (le plugin ne contient pas de code natif).
 name: Build davinciClaude macOS Installers
 
 on:
@@ -10,20 +11,13 @@ permissions:
   contents: write
 
 env:
-  PRODUCT_VERSION: "2.0" # Changez ici pour passer à la v2.0, etc.
+  PRODUCT_VERSION: "2.0"
   STABLE_TAG: "davinciclaude-mac-latest"
+  UPDATE_LATEST: "true" # Mettre à "false" pour ne pas écraser le 'latest'
 
 jobs:
   build-macos:
-    strategy:
-      matrix:
-        include:
-          - os: macos-15
-            platform: Mac-ARM
-          - os: macos-15
-            platform: Mac-Intel
-
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
@@ -38,45 +32,46 @@ jobs:
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
           echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
-          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A -T /usr/bin/productsign -T /usr/bin/pkgbuild
+          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
-
-          echo "--- Available Identities ---"
-          security find-identity -v build.keychain
 
           INSTALLER_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer")
           if [ -z "$INSTALLER_IDENTITY" ]; then
             echo "::error::Developer ID Installer certificate not found."
             exit 1
           fi
-
           echo "✅ Installer certificate found in the keychain."
 
-      - name: Build and Sign PKG Installer
+      - name: Prepare payload
         run: |
           mkdir -p build/pkg_root/davinciClaude
           cp -R frontend/davinciClaude/. build/pkg_root/davinciClaude/
 
+      - name: Build and Sign PKG Installer
+        run: |
+          VERSION="${{ env.PRODUCT_VERSION }}.${{ github.run_number }}"
           mkdir -p build/scripts
           chmod +x preinstall_davinciClaude.sh postinstall_davinciClaude.sh
           cp preinstall_davinciClaude.sh build/scripts/preinstall
           cp postinstall_davinciClaude.sh build/scripts/postinstall
 
-          SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-
-          if [ -z "$SIGNING_IDENTITY" ]; then
-            echo "::error::Developer ID Installer identity not found."
-            exit 1
-          fi
-
-          echo "Using Installer signing identity: $SIGNING_IDENTITY"
+          # Paquet composant (non signé, enveloppé ensuite par productbuild)
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins" \
                    --scripts build/scripts \
                    --identifier com.trial17.davinciclaude \
-                   --version 1.0 \
-                   --sign "$SIGNING_IDENTITY" \
-                   build/davinciClaude-Installer.pkg
+                   --version "$VERSION" \
+                   build/component.pkg
+
+          # Paquet final : pages d'accueil et de fin, fond, 8 langues
+          sed "s/__VERSION__/$VERSION/" installer_assets/davinci/mac/distribution.xml > build/distribution.xml
+          SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          productbuild --distribution build/distribution.xml \
+                       --resources installer_assets/davinci/mac \
+                       --package-path build \
+                       --sign "$SIGNING_IDENTITY" \
+                       build/davinciClaude-Installer-Mac.pkg
+          pkgutil --check-signature build/davinciClaude-Installer-Mac.pkg
 
       - name: Notarize and Staple PKG
         run: |
@@ -84,31 +79,31 @@ jobs:
             --apple-id "${{ secrets.APPLE_ID }}" \
             --team-id "${{ secrets.APPLE_TEAM_ID }}" \
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+          xcrun notarytool submit build/davinciClaude-Installer-Mac.pkg --keychain-profile "notary-profile" --wait
+          xcrun stapler staple build/davinciClaude-Installer-Mac.pkg
 
-          echo "--- Submitting to Apple Notary Service ---"
-          xcrun notarytool submit build/davinciClaude-Installer.pkg \
-            --keychain-profile "notary-profile" \
-            --wait
-
-          echo "--- Stapling Ticket ---"
-          xcrun stapler staple build/davinciClaude-Installer.pkg
+      # Anciens noms conservés : les liens ARM / Intel déjà publiés continuent de marcher
+      - name: Copy PKG under legacy names
+        run: |
+          cp build/davinciClaude-Installer-Mac.pkg build/davinciClaude-Installer-Mac-ARM.pkg
+          cp build/davinciClaude-Installer-Mac.pkg build/davinciClaude-Installer-Mac-Intel.pkg
 
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
-          name: davinciClaude-Installer-${{ matrix.platform }}
-          path: build/davinciClaude-Installer.pkg
-
-      - name: Rename PKG for Release
-        run: mv build/davinciClaude-Installer.pkg build/davinciClaude-Installer-${{ matrix.platform }}.pkg
+          name: davinciClaude-Installer-Mac
+          path: build/davinciClaude-Installer-Mac.pkg
 
       - name: Update Latest Release (Lien Stable)
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && env.UPDATE_LATEST == 'true'
         with:
           tag_name: ${{ env.STABLE_TAG }}
           name: davinciClaude — Latest Stable (macOS)
-          files: build/davinciClaude-Installer-${{ matrix.platform }}.pkg
+          files: |
+            build/davinciClaude-Installer-Mac.pkg
+            build/davinciClaude-Installer-Mac-ARM.pkg
+            build/davinciClaude-Installer-Mac-Intel.pkg
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,9 +112,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: davinciclaude-v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-${{ matrix.platform }}
-          name: davinciClaude v${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (macOS - ${{ matrix.platform }})
-          files: build/davinciClaude-Installer-${{ matrix.platform }}.pkg
+          tag_name: davinciclaude-v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac
+          name: davinciClaude v${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (macOS)
+          files: build/davinciClaude-Installer-Mac.pkg
           generate_release_notes: true
           make_latest: false
         env:

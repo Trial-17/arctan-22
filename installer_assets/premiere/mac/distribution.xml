@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Installeur macOS PremiereCopilot : voir le workflow build-*-mac.yml (productbuild) -->
+<!-- __VERSION__ est remplacé par le workflow. Un seul pkg pour Apple Silicon et Intel. -->
+<installer-gui-script minSpecVersion="2">
+    <title>PremiereCopilot</title>
+    <background file="background.tiff" alignment="bottomleft" scaling="none"/>
+    <background-darkAqua file="background.tiff" alignment="bottomleft" scaling="none"/>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <options customize="never" require-scripts="false" hostArchitectures="x86_64,arm64"/>
+    <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
+    <os-version min="10.15"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.trial17.premierecopilot"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.trial17.premierecopilot" visible="false">
+        <pkg-ref id="com.trial17.premierecopilot"/>
+    </choice>
+    <pkg-ref id="com.trial17.premierecopilot" version="__VERSION__" onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>

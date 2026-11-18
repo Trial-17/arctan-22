@@ -2,8 +2,8 @@
 name: Build Windows Installer
 
 on:
-  push:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -60,6 +60,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           path: PremiereCopilotInstaller.iss
+          options: /DAppVer=${{ env.PRODUCT_VERSION }}.${{ github.run_number }}
 
       # Signer l'installeur final .EXE avec Artifact Signing
       - name: Sign EXE Installer

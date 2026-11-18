@@ -41,6 +41,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           path: davinciClaudeInstaller.iss
+          options: /DAppVer=${{ env.PRODUCT_VERSION }}.${{ github.run_number }}
 
       # Signer l'installeur final .EXE avec Artifact Signing
       - name: Sign EXE Installer

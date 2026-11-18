@@ -1,30 +1,23 @@
-# Nom du workflow qui apparaîtra dans l'onglet "Actions" de votre repo
+# Installeur macOS PremiereCopilot
+# Un seul pkg pour Apple Silicon et Intel (le plugin ne contient pas de code natif).
 name: Build macOS Installers
 
 on:
-  push:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 env:
-  PRODUCT_VERSION: "3.0" # Changez ici pour passer à la v2.0, etc.
+  PRODUCT_VERSION: "3.0"
   STABLE_TAG: "premiere-mac-latest"
   UPDATE_LATEST: "true" # Mettre à "false" pour ne pas écraser le 'latest'
 
 jobs:
   build-macos:
-    strategy:
-      matrix:
-        include:
-          - os: macos-15
-            platform: Mac-ARM
-          - os: macos-15
-            platform: Mac-Intel
-
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
@@ -39,78 +32,55 @@ jobs:
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
           echo "$INSTALLER_CERT_P12" | base64 --decode > installer_cert.p12
-          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A -T /usr/bin/productsign -T /usr/bin/pkgbuild
+          security import installer_cert.p12 -k build.keychain -P "$INSTALLER_CERT_PASSWORD" -A -T /usr/bin/productsign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
-
-          echo "--- Available Identities ---"
-          security find-identity -v build.keychain
-          echo "------------------------------------"
 
           INSTALLER_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer")
           if [ -z "$INSTALLER_IDENTITY" ]; then
             echo "::error::Developer ID Installer certificate not found."
             exit 1
           fi
-
           echo "✅ Installer certificate found in the keychain."
 
-      # Créer et signer le ZXP (robuste, avec certificat auto-signé)
       - name: Create and Sign ZXP
         working-directory: ./frontend
         run: |
-          echo "--- Making ZXPSignCmd executable ---"
           chmod +x ./ZXPSignCmd
-
-          echo "--- Generating self-signed certificate for ZXP ---"
           ./ZXPSignCmd -selfSignedCert "FR" "France" "PremiereCopilot" "PremiereGPTBeta" "plugin2025" "PremiereGPTBeta.p12" \
-            -email "admin@premierecopilot.com" \
-            -orgUnit "PremiereGPTBeta" \
-            -validityDays 3650
-
-          if [ ! -f "PremiereGPTBeta.p12" ]; then
-            echo "::error::Failed to generate self-signed certificate."
-            exit 1
-          fi
-
-          echo "--- Signing the extension folder into ZXP ---"
+            -email "admin@premierecopilot.com" -orgUnit "PremiereGPTBeta" -validityDays 3650
           ./ZXPSignCmd -sign "./PremiereGPTBeta" "./PremiereGPTBeta.zxp" "./PremiereGPTBeta.p12" "plugin2025"
-
-          if [ ! -f "PremiereGPTBeta.zxp" ]; then
-            echo "::error::Failed to create ZXP."
-            exit 1
-          fi
-
-          echo "--- Verifying ZXP signature ---"
           ./ZXPSignCmd -verify "./PremiereGPTBeta.zxp" -certinfo
+
+      - name: Prepare payload
+        run: |
+          mkdir -p build/pkg_root/PremiereGPTBeta
+          unzip -q frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
 
       - name: Build and Sign PKG Installer
         run: |
-          mkdir -p build/pkg_root/PremiereGPTBeta
-          unzip frontend/PremiereGPTBeta.zxp -d build/pkg_root/PremiereGPTBeta
+          VERSION="${{ env.PRODUCT_VERSION }}.${{ github.run_number }}"
           mkdir -p build/scripts
           chmod +x preinstall.sh postinstall.sh
           cp preinstall.sh build/scripts/preinstall
           cp postinstall.sh build/scripts/postinstall
 
-          echo "--- Available identities in build.keychain ---"
-          security find-identity -v build.keychain
-          echo "---------------------------------------------"
-
-          SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
-
-          if [ -z "$SIGNING_IDENTITY" ]; then
-            echo "::error::Developer ID Installer identity not found."
-            exit 1
-          fi
-
-          echo "Using Installer signing identity: $SIGNING_IDENTITY"
+          # Paquet composant (non signé, enveloppé ensuite par productbuild)
           pkgbuild --root build/pkg_root \
                    --install-location "/Library/Application Support/Adobe/CEP/extensions" \
                    --scripts build/scripts \
                    --identifier com.trial17.premierecopilot \
-                   --version 1.0 \
-                   --sign "$SIGNING_IDENTITY" \
-                   build/PremiereCopilot-Installer.pkg
+                   --version "$VERSION" \
+                   build/component.pkg
+
+          # Paquet final : pages d'accueil et de fin, fond, 8 langues
+          sed "s/__VERSION__/$VERSION/" installer_assets/premiere/mac/distribution.xml > build/distribution.xml
+          SIGNING_IDENTITY=$(security find-identity -v build.keychain | grep "Developer ID Installer" | head -n 1 | sed -e 's/.*"\(.*\)"/\1/')
+          productbuild --distribution build/distribution.xml \
+                       --resources installer_assets/premiere/mac \
+                       --package-path build \
+                       --sign "$SIGNING_IDENTITY" \
+                       build/PremiereCopilot-Installer-Mac.pkg
+          pkgutil --check-signature build/PremiereCopilot-Installer-Mac.pkg
 
       - name: Notarize and Staple PKG
         run: |
@@ -118,23 +88,20 @@ jobs:
             --apple-id "${{ secrets.APPLE_ID }}" \
             --team-id "${{ secrets.APPLE_TEAM_ID }}" \
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+          xcrun notarytool submit build/PremiereCopilot-Installer-Mac.pkg --keychain-profile "notary-profile" --wait
+          xcrun stapler staple build/PremiereCopilot-Installer-Mac.pkg
 
-          echo "--- Submitting to Apple Notary Service ---"
-          xcrun notarytool submit build/PremiereCopilot-Installer.pkg \
-            --keychain-profile "notary-profile" \
-            --wait
-
-          echo "--- Stapling Ticket ---"
-          xcrun stapler staple build/PremiereCopilot-Installer.pkg
+      # Anciens noms conservés : les liens ARM / Intel déjà publiés continuent de marcher
+      - name: Copy PKG under legacy names
+        run: |
+          cp build/PremiereCopilot-Installer-Mac.pkg build/PremiereCopilot-Installer-Mac-ARM.pkg
+          cp build/PremiereCopilot-Installer-Mac.pkg build/PremiereCopilot-Installer-Mac-Intel.pkg
 
       - name: Upload PKG Installer
         uses: actions/upload-artifact@v4
         with:
-          name: PremiereCopilot-Installer-${{ matrix.platform }}
-          path: build/PremiereCopilot-Installer.pkg
-
-      - name: Rename PKG for Release
-        run: mv build/PremiereCopilot-Installer.pkg build/PremiereCopilot-Installer-${{ matrix.platform }}.pkg
+          name: PremiereCopilot-Installer-Mac
+          path: build/PremiereCopilot-Installer-Mac.pkg
 
       - name: Update Latest Release (Lien Stable)
         uses: softprops/action-gh-release@v2
@@ -142,7 +109,10 @@ jobs:
         with:
           tag_name: ${{ env.STABLE_TAG }}
           name: Latest Stable Version (MacOS)
-          files: build/PremiereCopilot-Installer-${{ matrix.platform }}.pkg
+          files: |
+            build/PremiereCopilot-Installer-Mac.pkg
+            build/PremiereCopilot-Installer-Mac-ARM.pkg
+            build/PremiereCopilot-Installer-Mac-Intel.pkg
           make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -151,9 +121,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac-${{ matrix.platform }}
-          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS - ${{ matrix.platform }})
-          files: build/PremiereCopilot-Installer-${{ matrix.platform }}.pkg
+          tag_name: v${{ env.PRODUCT_VERSION }}.${{ github.run_number }}-mac
+          name: Version ${{ env.PRODUCT_VERSION }}.${{ github.run_number }} (MacOS)
+          files: build/PremiereCopilot-Installer-Mac.pkg
           generate_release_notes: true
           make_latest: false
         env:
